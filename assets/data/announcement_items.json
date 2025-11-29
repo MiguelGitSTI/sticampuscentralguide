@@ -1,0 +1,21 @@
+[
+	{
+		"id": 1,
+		"title": "Welcome Week",
+		"message": "Check out the Welcome Week schedule and campus tours.",
+		"type": "info"
+	},
+	{
+		"id": 2,
+		"title": "Library Hours",
+		"message": "The library is now open until 11 PM on weekdays.",
+		"type": "update"
+	},
+	{
+		"id": 3,
+		"title": "Club Fair",
+		"message": "Join us at the student club fair this Friday in the main hall.",
+		"type": "event"
+	}
+]
+

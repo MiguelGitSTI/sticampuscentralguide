@@ -1,0 +1,31 @@
+[
+	{
+		"title": "Tech Conference",
+		"date": "2025-11-17",
+		"time": "10:00 AM - 5:00 PM",
+		"location": "Airport",
+		"description": "Annual technology conference featuring keynote speakers and workshops."
+	},
+	{
+		"title": "Presentation in FPL",
+		"date": "2025-11-18",
+		"time": "10:00 AM - 11:30 AM",
+		"location": "Room C301",
+		"description": "Presentation of your Research Paper in FPL"
+	},
+	{
+		"title": "Cheerdance Rehearsal",
+		"date": "2025-11-24",
+		"time": "Tentative",
+		"location": "Tentative",
+		"description": "Rehearsal for upcoming cheerdance competition"
+	},
+	{
+		"title": "Cheerdance",
+		"date": "2025-11-25",
+		"time": "Tentative",
+		"location": "Tentative",
+		"description": "The actual cheerdance competition event"
+	}
+]
+

@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "253533636338",
+    "project_id": "sggc-21ac7",
+    "storage_bucket": "sggc-21ac7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:253533636338:android:432fb7a6a5f8b1b182b26b",
+        "android_client_info": {
+          "package_name": "com.example.sccgd"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCkJ7AdFouhFlF3N6nvPl9FgXe6rACvHcU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:253533636338:android:e7ad0223a1d925f982b26b",
+        "android_client_info": {
+          "package_name": "com.example.sticampuscentralguide"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCkJ7AdFouhFlF3N6nvPl9FgXe6rACvHcU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

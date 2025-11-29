@@ -1,0 +1,35 @@
+[
+	{
+		"question": "How do I navigate around campus?",
+		"answer": "Use the Map tab to view the interactive campus map. You can search for specific buildings, departments, or facilities. The map provides walking directions and estimated travel times between locations."
+	},
+	{
+		"question": "What are the library hours?",
+		"answer": "The main library is open Monday-Thursday 7:30 AM - 12:00 AM, Friday 7:30 AM - 8:00 PM, Saturday 10:00 AM - 8:00 PM, and Sunday 12:00 PM - 12:00 AM. Hours may vary during holidays and exam periods."
+	},
+	{
+		"question": "How do I access Wi-Fi on campus?",
+		"answer": "Connect to the 'STI-Student' network using your student credentials. Guest Wi-Fi is available as 'STI-Guest' with no password required. For technical support, contact the IT Help Desk."
+	},
+	{
+		"question": "Where can I find parking on campus?",
+		"answer": "Student parking is available in designated lots around campus. A valid parking permit is required. Visitor parking is available near the main entrance. Check the Map tab for specific parking lot locations."
+	},
+	{
+		"question": "What dining options are available?",
+		"answer": "Campus dining includes the main cafeteria, coffee shops, and vending machines. Meal plans are available for purchase. The cafeteria serves breakfast, lunch, and dinner with various dietary options."
+	},
+	{
+		"question": "How do I report a maintenance issue?",
+		"answer": "Report maintenance issues through the online portal or contact the facilities department directly. For urgent issues like water leaks or electrical problems, call the emergency maintenance line."
+	},
+	{
+		"question": "Where is the student services office?",
+		"answer": "Student Services is located on the second floor of the main administration building. Office hours are Monday-Friday 8:00 AM - 5:00 PM. Services include registration, financial aid, and general student support."
+	},
+	{
+		"question": "How do I access online learning resources?",
+		"answer": "Access the learning management system through the student portal using your login credentials. All course materials, assignments, and grades are available online. Technical support is available 24/7."
+	}
+]
+

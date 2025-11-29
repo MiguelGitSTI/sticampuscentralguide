@@ -1,0 +1,29 @@
+{
+  "monday": [
+    {"name": "Physical Education and Health 3","time": "7:00 AM - 9:00 AM","room": "Activity Area 2 (GYM)","startHour": 7,"startMinute": 0,"endHour": 9,"endMinute": 0},
+    {"name": "Filipino sa Piling Larang (Tech-Voc)","time": "10:00 AM - 11:30 AM","room": "301C - ClassRm","startHour": 10,"startMinute": 0,"endHour": 11,"endMinute": 30},
+    {"name": "Personal Development","time": "1:00 PM - 2:00 PM","room": "308C - ClassRm","startHour": 13,"startMinute": 0,"endHour": 14,"endMinute": 0},
+    {"name": "Pagbasa at Pagsusuri ng Ibat Ibang Teksto Tungo sa Pananaliksik","time": "2:00 PM - 4:00 PM","room": "308C - ClassRm","startHour": 14,"startMinute": 0,"endHour": 16,"endMinute": 0}
+  ],
+  "tuesday": [
+    {"name": "Filipino sa Piling Larang (Tech-Voc)","time": "10:00 AM - 11:30 AM","room": "301C - ClassRm","startHour": 10,"startMinute": 0,"endHour": 11,"endMinute": 30},
+    {"name": "Personal Development","time": "1:00 PM - 2:00 PM","room": "308C - ClassRm","startHour": 13,"startMinute": 0,"endHour": 14,"endMinute": 0},
+    {"name": "Pagbasa at Pagsusuri ng Ibat Ibang Teksto Tungo sa Pananaliksik","time": "2:00 PM - 4:00 PM","room": "308C - ClassRm","startHour": 14,"startMinute": 0,"endHour": 16,"endMinute": 0}
+  ],
+  "wednesday": [],
+  "thursday": [
+    {"name": "Computer/Web Programming 4 - Computer Programming KE III (JNET Technology) (2019/10)","time": "7:00 AM - 8:30 AM","room": "409C - ComLab","startHour": 7,"startMinute": 0,"endHour": 8,"endMinute": 30},
+    {"name": "Computer/Web Programming 4 - Computer Programming KE III (JNET Technology) (2019/10)","time": "8:30 AM - 10:00 AM","room": "207C - ClassRm","startHour": 8,"startMinute": 30,"endHour": 10,"endMinute": 0},
+    {"name": "Homeroom G12-1st Term","time": "10:00 AM - 11:00 AM","room": "203C - ClassRm","startHour": 10,"startMinute": 0,"endHour": 11,"endMinute": 0},
+    {"name": "English for Academic and Professional Purposes","time": "1:00 PM - 4:00 PM","room": "304C - ClassRm","startHour": 13,"startMinute": 0,"endHour": 16,"endMinute": 0}
+  ],
+  "friday": [
+    {"name": "Physical Science","time": "7:00 AM - 8:00 AM","room": "211C - ClassRm","startHour": 7,"startMinute": 0,"endHour": 8,"endMinute": 0},
+    {"name": "Practical Research 2","time": "10:00 AM - 1:00 PM","room": "307C - ClassRm","startHour": 10,"startMinute": 0,"endHour": 13,"endMinute": 0}
+  ],
+  "saturday": [
+    {"name": "Physical Science","time": "7:00 AM - 8:00 AM","room": "211C - ClassRm","startHour": 7,"startMinute": 0,"endHour": 8,"endMinute": 0},
+    {"name": "Computer/Web Programming 5 - Computer Programming KE III (JNET Technology) (2019/10)","time": "10:00 AM - 11:30 AM","room": "409C - ComLab","startHour": 10,"startMinute": 0,"endHour": 11,"endMinute": 30},
+    {"name": "Computer/Web Programming 5 - Computer Programming KE III (JNET Technology) (2019/10)","time": "11:30 AM - 1:00 PM","room": "213C - ClassRm","startHour": 11,"startMinute": 30,"endHour": 13,"endMinute": 0}
+  ]
+}
