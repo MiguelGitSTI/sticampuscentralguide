@@ -95,7 +95,6 @@ Before you begin, ensure you have the following installed:
 |----------|-----------------|-------------|---------------|
 | Flutter SDK | 3.9.2 | Latest stable | [flutter.dev](https://docs.flutter.dev/get-started/install) |
 | Dart SDK | 3.9.2 | Latest stable | Included with Flutter |
-| Android Studio | 2023.1+ | Latest | [developer.android.com](https://developer.android.com/studio) |
 | VS Code | 1.80+ | Latest | [code.visualstudio.com](https://code.visualstudio.com/) |
 | Git | 2.30+ | Latest | [git-scm.com](https://git-scm.com/) |
 | JDK | 17 | 17 or 21 | [adoptium.net](https://adoptium.net/) |
@@ -165,11 +164,6 @@ Ensure all checkmarks are green before proceeding.
 | Platform | Status | Notes |
 |----------|--------|-------|
 | **Android** | ✅ Production Ready | Primary target platform |
-| **iOS** | ✅ Supported | Requires macOS for building |
-| **Web** | 🔧 Experimental | Basic support included |
-| **Windows** | 🔧 Experimental | Desktop support available |
-| **macOS** | 🔧 Experimental | Desktop support available |
-| **Linux** | 🔧 Experimental | Desktop support available |
 
 ## Testing Devices
 
@@ -201,14 +195,6 @@ The application has been tested on the following devices and platforms:
 | **Screen** | 4.5" | 5.5"+ |
 | **Internet** | Required | Wi-Fi or Mobile Data |
 
-#### iOS
-
-| Requirement | Minimum | Recommended |
-|-------------|---------|-------------|
-| **iOS Version** | 12.0 | 15.0+ |
-| **Device** | iPhone 6s | iPhone 11+ |
-| **Storage** | 100MB | 200MB+ |
-| **Internet** | Required | Wi-Fi or Mobile Data |
 
 ## Project Structure
 
