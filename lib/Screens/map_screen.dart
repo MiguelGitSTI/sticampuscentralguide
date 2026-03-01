@@ -20,8 +20,9 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   _OverlayAction _activeAction = _OverlayAction.info; // which action's content to show
   bool _hasInitializedPosition = false;
 
-  AnimationController? _zoomController;
-  Animation<Matrix4>? _zoomAnimation;
+  late final AnimationController _zoomController;
+  Matrix4? _zoomBegin;
+  Matrix4? _zoomEnd;
 
   List<BoxShadow> _softShadow(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -56,10 +57,20 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
 
   // Allow external callers (HomeScreen) to highlight a building
   void highlightBuilding(String buildingId) {
+    final b = _tryGetBuilding(buildingId);
+    if (b == null) return;
     setState(() {
       _activeBuildingId = buildingId;
       _cardVisible = false;
     });
+    _zoomToBuilding(b);
+  }
+
+  BuildingItem? _tryGetBuilding(String buildingId) {
+    for (final b in kBuildingItems) {
+      if (b.id == buildingId) return b;
+    }
+    return null;
   }
 
   void _clearSelection() {
@@ -70,52 +81,56 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     });
   }
 
+  void _cancelZoomAnimation() {
+    // Null out BEFORE reset so _onZoomTick won't snap back to _zoomBegin
+    _zoomBegin = null;
+    _zoomEnd = null;
+    _zoomController.reset();
+  }
+
   void _animateTransformTo(Matrix4 target) {
-    _zoomController?.stop();
-    _zoomController?.dispose();
+    // Stop any in-flight animation
+    _zoomController.reset();
+    _zoomBegin = _transformationController.value.clone();
+    _zoomEnd = target.clone();
+    _zoomController.forward();
+  }
 
-    final controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 260),
-    );
-    _zoomController = controller;
-
-    final begin = _transformationController.value;
-    final animation = Matrix4Tween(begin: begin, end: target).animate(
-      CurvedAnimation(parent: controller, curve: Curves.easeOutCubic),
-    );
-    _zoomAnimation = animation;
-
-    controller.addListener(() {
-      final v = _zoomAnimation?.value;
-      if (v != null) {
-        _transformationController.value = v;
-      }
-    });
-    controller.forward();
+  /// Compute building center in the coordinate space of the constrained child.
+  /// With constrained:true, the SizedBox(1024,768) is sized to the viewport.
+  /// Building widget width = b.scale * MapSpec.width (absolute px, unclamped).
+  /// Align formula: offset = (parent - child) * (alignment + 1) / 2.
+  Offset _buildingViewportCenter(BuildingItem b, Size viewportSize) {
+    final cw = b.scale * MapSpec.width;
+    final cx = (viewportSize.width - cw) * (b.x + 1) / 2.0 + cw / 2.0;
+    final cy = (b.y + 1) / 2.0 * viewportSize.height;
+    return Offset(cx, cy);
   }
 
   void _zoomToBuilding(BuildingItem b) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final viewerContext = _viewerKey.currentContext;
       if (viewerContext == null) return;
       final render = viewerContext.findRenderObject();
       if (render is! RenderBox || !render.hasSize) return;
 
-      final viewportSize = render.size;
+      final vp = render.size;
       final currentScale = _transformationController.value.getMaxScaleOnAxis();
-      const desiredScale = 2.4;
-      final targetScale = (currentScale < desiredScale ? desiredScale : currentScale).clamp(1.0, 4.0);
+      // Use 2.4 as default, but if user is zoomed in more, bring it back down to 2.4
+      final targetScale = currentScale > 2.4 ? 2.4 : (currentScale < 2.4 ? 2.4 : currentScale);
 
-      final buildingCenter = Offset(
-        (b.x + 1) * 0.5 * MapSpec.width,
-        (b.y + 1) * 0.5 * MapSpec.height,
-      );
+      final center = _buildingViewportCenter(b, vp);
+
+      assert(() {
+        debugPrint('[Map] Zoom → ${b.id}: center=(${center.dx.toStringAsFixed(1)}, ${center.dy.toStringAsFixed(1)}), vp=(${vp.width.toStringAsFixed(0)}x${vp.height.toStringAsFixed(0)})');
+        return true;
+      }());
 
       final target = Matrix4.identity()
-        ..translate(viewportSize.width / 2, viewportSize.height / 2)
+        ..translate(vp.width / 2, vp.height / 2)
         ..scale(targetScale)
-        ..translate(-buildingCenter.dx, -buildingCenter.dy);
+        ..translate(-center.dx, -center.dy);
 
       _animateTransformTo(target);
     });
@@ -125,6 +140,21 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   void initState() {
     super.initState();
     _transformationController = TransformationController();
+
+    _zoomController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _zoomController.addListener(_onZoomTick);
+  }
+
+  void _onZoomTick() {
+    final begin = _zoomBegin;
+    final end = _zoomEnd;
+    if (begin == null || end == null) return;
+    final t = Curves.easeOutCubic.transform(_zoomController.value);
+    final lerped = Matrix4Tween(begin: begin, end: end).lerp(t);
+    _transformationController.value = lerped;
   }
 
   String _buildActionBodyText(BuildingOverlaySpec spec) {
@@ -140,7 +170,9 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
 
   @override
   void dispose() {
-    _zoomController?.dispose();
+    _zoomBegin = null;
+    _zoomEnd = null;
+    _zoomController.dispose();
     _transformationController.dispose();
     super.dispose();
   }
@@ -188,6 +220,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                     panEnabled: true,
                     scaleEnabled: true,
                     onInteractionStart: (_) {
+                      _cancelZoomAnimation();
                       // Mark as initialized once user interacts
                       if (!_hasInitializedPosition) {
                         _hasInitializedPosition = true;
@@ -285,11 +318,14 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       child: GestureDetector(
         behavior: HitTestBehavior.translucent,
         onTap: () {
+          final alreadyActive = _activeBuildingId == b.id;
           setState(() {
             _activeBuildingId = b.id;
             _cardVisible = false;
           });
-          _zoomToBuilding(b);
+          if (!alreadyActive) {
+            _zoomToBuilding(b);
+          }
         },
         child: AnimatedScale(
           scale: isActive ? 1.10 : 1.0,
