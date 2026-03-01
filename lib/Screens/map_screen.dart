@@ -12,13 +12,16 @@ class MapScreen extends StatefulWidget {
   State<MapScreen> createState() => _MapScreenState();
 }
 
-class _MapScreenState extends State<MapScreen> {
+class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixin {
   late final TransformationController _transformationController;
   final GlobalKey _viewerKey = GlobalKey();
   String? _activeBuildingId; // building with overlay card open (also drives scale)
   bool _cardVisible = false; // when true, show the info card above the map
   _OverlayAction _activeAction = _OverlayAction.info; // which action's content to show
   bool _hasInitializedPosition = false;
+
+  AnimationController? _zoomController;
+  Animation<Matrix4>? _zoomAnimation;
 
   List<BoxShadow> _softShadow(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -59,6 +62,65 @@ class _MapScreenState extends State<MapScreen> {
     });
   }
 
+  void _clearSelection() {
+    if (_activeBuildingId == null && !_cardVisible) return;
+    setState(() {
+      _activeBuildingId = null;
+      _cardVisible = false;
+    });
+  }
+
+  void _animateTransformTo(Matrix4 target) {
+    _zoomController?.stop();
+    _zoomController?.dispose();
+
+    final controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 260),
+    );
+    _zoomController = controller;
+
+    final begin = _transformationController.value;
+    final animation = Matrix4Tween(begin: begin, end: target).animate(
+      CurvedAnimation(parent: controller, curve: Curves.easeOutCubic),
+    );
+    _zoomAnimation = animation;
+
+    controller.addListener(() {
+      final v = _zoomAnimation?.value;
+      if (v != null) {
+        _transformationController.value = v;
+      }
+    });
+    controller.forward();
+  }
+
+  void _zoomToBuilding(BuildingItem b) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final viewerContext = _viewerKey.currentContext;
+      if (viewerContext == null) return;
+      final render = viewerContext.findRenderObject();
+      if (render is! RenderBox || !render.hasSize) return;
+
+      final viewportSize = render.size;
+      final currentScale = _transformationController.value.getMaxScaleOnAxis();
+      const desiredScale = 2.4;
+      final targetScale = (currentScale < desiredScale ? desiredScale : currentScale).clamp(1.0, 4.0);
+
+      final buildingCenter = Offset(
+        (b.x + 1) * 0.5 * MapSpec.width,
+        (b.y + 1) * 0.5 * MapSpec.height,
+      );
+
+      final target = Matrix4.identity()
+        ..translate(viewportSize.width / 2, viewportSize.height / 2)
+        ..scale(targetScale)
+        ..translate(-buildingCenter.dx, -buildingCenter.dy);
+
+      _animateTransformTo(target);
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -78,6 +140,7 @@ class _MapScreenState extends State<MapScreen> {
 
   @override
   void dispose() {
+    _zoomController?.dispose();
     _transformationController.dispose();
     super.dispose();
   }
@@ -142,13 +205,22 @@ class _MapScreenState extends State<MapScreen> {
                               filterQuality: FilterQuality.medium,
                             ),
                           ),
+                          // Tap empty space to clear the current selection.
+                          if (_activeBuildingId != null || _cardVisible)
+                            Positioned.fill(
+                              child: GestureDetector(
+                                behavior: HitTestBehavior.translucent,
+                                onTap: _clearSelection,
+                                child: const SizedBox.expand(),
+                              ),
+                            ),
                           // Non-selected buildings first
                           ..._buildings(excludeId: _activeBuildingId),
                           // Blur the rest of the map when a building is active
                           if (_activeBuildingId != null)
                             Positioned.fill(
-                              child: AbsorbPointer(
-                                absorbing: true,
+                              child: IgnorePointer(
+                                ignoring: true,
                                 child: ClipRect(
                                   child: BackdropFilter(
                                     filter: ImageFilter.blur(sigmaX: 1, sigmaY: 1),
@@ -217,6 +289,7 @@ class _MapScreenState extends State<MapScreen> {
             _activeBuildingId = b.id;
             _cardVisible = false;
           });
+          _zoomToBuilding(b);
         },
         child: AnimatedScale(
           scale: isActive ? 1.10 : 1.0,
@@ -277,30 +350,13 @@ class _MapScreenState extends State<MapScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        spec.title,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ),
-                    InkWell(
-                      borderRadius: BorderRadius.circular(16),
-                      onTap: () => setState(() {
-                        _cardVisible = false;
-                        _activeBuildingId = null;
-                      }),
-                      child: const Padding(
-                        padding: EdgeInsets.all(4.0),
-                        child: Icon(Icons.close, size: 18),
-                      ),
-                    ),
-                  ],
+                Text(
+                  spec.title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black87,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 // Building description images (e.g., files named like `<id>_desc*.png/jpg/webp`)
@@ -367,29 +423,6 @@ class _MapScreenState extends State<MapScreen> {
                       if (i != buttons.length - 1) SizedBox(width: innerSpacing),
                     ],
                   ],
-                ),
-              ),
-              Positioned(
-                top: -10,
-                right: -10,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(16),
-                  onTap: () => setState(() {
-                    _activeBuildingId = null;
-                    _cardVisible = false;
-                  }),
-                  child: Container(
-                    width: 30,
-                    height: 30,
-                    decoration: BoxDecoration(
-                      color: ThemeProvider.gold,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(color: Colors.black.withOpacity(0.10), blurRadius: 6, offset: const Offset(0, 3)),
-                      ],
-                    ),
-                    child: const Icon(Icons.close, size: 16, color: ThemeProvider.navyBlue),
-                  ),
                 ),
               ),
             ],
