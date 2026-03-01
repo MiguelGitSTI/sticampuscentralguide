@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:sticampuscentralguide/Widgets/event_carousel.dart';
+import 'package:sticampuscentralguide/Widgets/event_calendar.dart';
 import 'package:sticampuscentralguide/Widgets/class_schedule.dart';
 import 'package:sticampuscentralguide/Widgets/todo_list.dart';
 
@@ -21,11 +21,11 @@ class _HubScreenState extends State<HubScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Event Carousel Title (outside of card)
+              // Calendar Title
               Padding(
                 padding: const EdgeInsets.only(left: 4.0, bottom: 8.0),
                 child: Text(
-                  'Upcoming Events',
+                  'Events',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w600,
@@ -33,8 +33,8 @@ class _HubScreenState extends State<HubScreen> {
                   ),
                 ),
               ),
-              // Event Carousel
-              const EventCarousel(),
+              // Event Calendar
+              const EventCalendar(),
               const SizedBox(height: 24),
               
               // Class Schedule Title (outside of card)

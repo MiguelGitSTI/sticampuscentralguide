@@ -89,7 +89,9 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   }
 
   void _animateTransformTo(Matrix4 target) {
-    // Stop any in-flight animation
+    // Null out BEFORE reset so _onZoomTick won't snap back to old _zoomBegin
+    _zoomBegin = null;
+    _zoomEnd = null;
     _zoomController.reset();
     _zoomBegin = _transformationController.value.clone();
     _zoomEnd = target.clone();

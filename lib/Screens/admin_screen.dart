@@ -520,26 +520,32 @@ class EventManagerScreen extends StatefulWidget {
 class _EventManagerScreenState extends State<EventManagerScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _timeController = TextEditingController();
   final _locationController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final _customTimeController = TextEditingController();
   DateTime _selectedDate = DateTime.now();
+  bool _isMultiDay = false;
+  DateTime _endDate = DateTime.now();
+  TimeOfDay _startTime = const TimeOfDay(hour: 8, minute: 0);
+  TimeOfDay _endTime = const TimeOfDay(hour: 17, minute: 0);
+  bool _isCustomTime = false;
   bool _saving = false;
 
   @override
   void dispose() {
     _nameController.dispose();
-    _timeController.dispose();
     _locationController.dispose();
     _descriptionController.dispose();
+    _customTimeController.dispose();
     super.dispose();
   }
 
-  Future<void> _selectDate() async {
+  Future<void> _selectDate({bool isEndDate = false}) async {
+    final initial = isEndDate ? _endDate : _selectedDate;
     final picked = await showDatePicker(
       context: context,
-      initialDate: _selectedDate,
-      firstDate: DateTime.now().subtract(const Duration(days: 30)),
+      initialDate: initial,
+      firstDate: isEndDate ? _selectedDate : DateTime.now().subtract(const Duration(days: 30)),
       lastDate: DateTime.now().add(const Duration(days: 365)),
       builder: (context, child) {
         return Theme(
@@ -554,8 +560,53 @@ class _EventManagerScreenState extends State<EventManagerScreen> {
       },
     );
     if (picked != null) {
-      setState(() => _selectedDate = picked);
+      setState(() {
+        if (isEndDate) {
+          _endDate = picked;
+        } else {
+          _selectedDate = picked;
+          // If end date is before start date, bump it
+          if (_endDate.isBefore(_selectedDate)) {
+            _endDate = _selectedDate;
+          }
+        }
+      });
     }
+  }
+
+  Future<void> _selectTime({required bool isStartTime}) async {
+    final initial = isStartTime ? _startTime : _endTime;
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: initial,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+              primary: _navyBlue,
+              secondary: _gold,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setState(() {
+        if (isStartTime) {
+          _startTime = picked;
+        } else {
+          _endTime = picked;
+        }
+      });
+    }
+  }
+
+  String _formatTimeOfDay(TimeOfDay t) {
+    final hour = t.hourOfPeriod == 0 ? 12 : t.hourOfPeriod;
+    final minute = t.minute.toString().padLeft(2, '0');
+    final period = t.period == DayPeriod.am ? 'AM' : 'PM';
+    return '$hour:$minute $period';
   }
 
   Future<void> _saveEvent() async {
@@ -563,15 +614,37 @@ class _EventManagerScreenState extends State<EventManagerScreen> {
     setState(() => _saving = true);
     try {
       final uid = FirebaseAuth.instance.currentUser?.uid;
-      await FirebaseFirestore.instance.collection('events').add({
+      String timeDisplay;
+      final eventData = <String, dynamic>{
         'title': _nameController.text.trim(),
         'date': Timestamp.fromDate(_selectedDate),
-        'time': _timeController.text.trim(),
         'location': _locationController.text.trim(),
         'description': _descriptionController.text.trim(),
         'createdAt': FieldValue.serverTimestamp(),
         'createdByUid': uid,
-      });
+        'isCustomTime': _isCustomTime,
+      };
+
+      if (_isCustomTime) {
+        timeDisplay = _customTimeController.text.trim();
+        eventData['time'] = timeDisplay;
+      } else {
+        final startTimeStr = _formatTimeOfDay(_startTime);
+        final endTimeStr = _formatTimeOfDay(_endTime);
+        eventData['startTime'] = startTimeStr;
+        eventData['endTime'] = endTimeStr;
+        timeDisplay = '$startTimeStr – $endTimeStr';
+        eventData['time'] = timeDisplay;
+      }
+
+      // Only store endDate if multi-day AND dates actually differ
+      final sameDay = _selectedDate.year == _endDate.year &&
+          _selectedDate.month == _endDate.month &&
+          _selectedDate.day == _endDate.day;
+      if (_isMultiDay && !sameDay) {
+        eventData['endDate'] = Timestamp.fromDate(_endDate);
+      }
+      await FirebaseFirestore.instance.collection('events').add(eventData);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -580,10 +653,17 @@ class _EventManagerScreenState extends State<EventManagerScreen> {
         ),
       );
       _nameController.clear();
-      _timeController.clear();
       _locationController.clear();
       _descriptionController.clear();
-      setState(() => _selectedDate = DateTime.now());
+      _customTimeController.clear();
+      setState(() {
+        _selectedDate = DateTime.now();
+        _endDate = DateTime.now();
+        _isMultiDay = false;
+        _isCustomTime = false;
+        _startTime = const TimeOfDay(hour: 8, minute: 0);
+        _endTime = const TimeOfDay(hour: 17, minute: 0);
+      });
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -730,11 +810,11 @@ class _EventManagerScreenState extends State<EventManagerScreen> {
                     const SizedBox(height: 16),
                     // Date picker
                     InkWell(
-                      onTap: _selectDate,
+                      onTap: () => _selectDate(),
                       borderRadius: BorderRadius.circular(12),
                       child: InputDecorator(
                         decoration: InputDecoration(
-                          labelText: 'Date',
+                          labelText: _isMultiDay ? 'Start Date' : 'Date',
                           prefixIcon: Icon(Icons.calendar_today, color: _navyBlue),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                           enabledBorder: OutlineInputBorder(
@@ -751,12 +831,136 @@ class _EventManagerScreenState extends State<EventManagerScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _timeController,
-                      decoration: _buildInputDecoration('Time', 'e.g., 10:00 AM - 5:00 PM', Icons.access_time),
-                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                    const SizedBox(height: 12),
+                    // Multi-day checkbox
+                    Row(
+                      children: [
+                        SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: Checkbox(
+                            value: _isMultiDay,
+                            activeColor: _navyBlue,
+                            onChanged: (v) => setState(() {
+                              _isMultiDay = v ?? false;
+                              if (_isMultiDay && _endDate.isBefore(_selectedDate)) {
+                                _endDate = _selectedDate.add(const Duration(days: 1));
+                              }
+                            }),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Multi-day event',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: cs.onSurface.withOpacity(0.8),
+                          ),
+                        ),
+                      ],
                     ),
+                    // End date picker (only when multi-day)
+                    if (_isMultiDay) ...[
+                      const SizedBox(height: 12),
+                      InkWell(
+                        onTap: () => _selectDate(isEndDate: true),
+                        borderRadius: BorderRadius.circular(12),
+                        child: InputDecorator(
+                          decoration: InputDecoration(
+                            labelText: 'End Date',
+                            prefixIcon: Icon(Icons.event, color: _navyBlue),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(color: cs.outline.withOpacity(0.5)),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(_formatDate(_endDate)),
+                              Icon(Icons.arrow_drop_down, color: _navyBlue),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    // Custom time checkbox
+                    Row(
+                      children: [
+                        SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: Checkbox(
+                            value: _isCustomTime,
+                            activeColor: _navyBlue,
+                            onChanged: (v) => setState(() => _isCustomTime = v ?? false),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Custom time (e.g. TBA, All Day)',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: cs.onSurface.withOpacity(0.8),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    // Time input: pickers or free text
+                    if (_isCustomTime)
+                      TextFormField(
+                        controller: _customTimeController,
+                        decoration: _buildInputDecoration('Time', 'e.g., TBA, All Day, Morning', Icons.access_time),
+                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                      )
+                    else
+                      Row(
+                        children: [
+                          Expanded(
+                            child: InkWell(
+                              onTap: () => _selectTime(isStartTime: true),
+                              borderRadius: BorderRadius.circular(12),
+                              child: InputDecorator(
+                                decoration: InputDecoration(
+                                  labelText: 'Start Time',
+                                  prefixIcon: Icon(Icons.access_time, color: _navyBlue, size: 20),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(color: cs.outline.withOpacity(0.5)),
+                                  ),
+                                ),
+                                child: Text(_formatTimeOfDay(_startTime)),
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            child: Text('–', style: TextStyle(fontSize: 18, color: cs.onSurface)),
+                          ),
+                          Expanded(
+                            child: InkWell(
+                              onTap: () => _selectTime(isStartTime: false),
+                              borderRadius: BorderRadius.circular(12),
+                              child: InputDecorator(
+                                decoration: InputDecoration(
+                                  labelText: 'End Time',
+                                  prefixIcon: Icon(Icons.access_time, color: _navyBlue, size: 20),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(color: cs.outline.withOpacity(0.5)),
+                                  ),
+                                ),
+                                child: Text(_formatTimeOfDay(_endTime)),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _locationController,
@@ -871,6 +1075,11 @@ class _EventManagerScreenState extends State<EventManagerScreen> {
                         if (ts is Timestamp) {
                           dateStr = _formatDate(ts.toDate());
                         }
+                        final endTs = d['endDate'];
+                        if (endTs is Timestamp) {
+                          dateStr = '$dateStr – ${_formatDate(endTs.toDate())}';
+                        }
+                        final timeStr = d['time'] as String? ?? '';
                         return ListTile(
                           leading: Container(
                             width: 40,
@@ -887,13 +1096,33 @@ class _EventManagerScreenState extends State<EventManagerScreen> {
                             overflow: TextOverflow.ellipsis,
                           ),
                           subtitle: Text(
-                            '$dateStr  •  ${d['time'] ?? ''}\n📍 ${d['location'] ?? ''}',
+                            '$dateStr  •  $timeStr\n📍 ${d['location'] ?? ''}',
                           ),
                           isThreeLine: true,
-                          trailing: IconButton(
-                            icon: Icon(Icons.delete_outline, color: cs.error),
-                            tooltip: 'Delete event',
-                            onPressed: () => _confirmDeleteEvent(context, doc.id, d['title'] ?? ''),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: Icon(Icons.edit_outlined, color: _navyBlue),
+                                tooltip: 'Edit event',
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => EventEditScreen(
+                                        docId: doc.id,
+                                        data: d,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                              IconButton(
+                                icon: Icon(Icons.delete_outline, color: cs.error),
+                                tooltip: 'Delete event',
+                                onPressed: () => _confirmDeleteEvent(context, doc.id, d['title'] ?? ''),
+                              ),
+                            ],
                           ),
                         );
                       },
@@ -905,6 +1134,504 @@ class _EventManagerScreenState extends State<EventManagerScreen> {
           ),
         ),
       );
+  }
+}
+
+/// Screen for editing an existing event.
+class EventEditScreen extends StatefulWidget {
+  final String docId;
+  final Map<String, dynamic> data;
+
+  const EventEditScreen({
+    super.key,
+    required this.docId,
+    required this.data,
+  });
+
+  @override
+  State<EventEditScreen> createState() => _EventEditScreenState();
+}
+
+class _EventEditScreenState extends State<EventEditScreen> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _nameController;
+  late final TextEditingController _locationController;
+  late final TextEditingController _descriptionController;
+  late final TextEditingController _customTimeController;
+  late DateTime _selectedDate;
+  late DateTime _endDate;
+  late bool _isMultiDay;
+  late TimeOfDay _startTime;
+  late TimeOfDay _endTime;
+  late bool _isCustomTime;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final d = widget.data;
+    _nameController = TextEditingController(text: d['title'] as String? ?? '');
+    _locationController = TextEditingController(text: d['location'] as String? ?? '');
+    _descriptionController = TextEditingController(text: d['description'] as String? ?? '');
+
+    // Date
+    final ts = d['date'];
+    if (ts is Timestamp) {
+      _selectedDate = ts.toDate();
+    } else {
+      _selectedDate = DateTime.now();
+    }
+
+    // End date
+    final endTs = d['endDate'];
+    if (endTs is Timestamp) {
+      _endDate = endTs.toDate();
+      _isMultiDay = true;
+    } else {
+      _endDate = _selectedDate;
+      _isMultiDay = false;
+    }
+
+    // Time
+    _isCustomTime = d['isCustomTime'] == true;
+    _customTimeController = TextEditingController(
+      text: _isCustomTime ? (d['time'] as String? ?? '') : '',
+    );
+
+    _startTime = _parseTimeOfDay(d['startTime'] as String?) ??
+        const TimeOfDay(hour: 8, minute: 0);
+    _endTime = _parseTimeOfDay(d['endTime'] as String?) ??
+        const TimeOfDay(hour: 17, minute: 0);
+  }
+
+  TimeOfDay? _parseTimeOfDay(String? s) {
+    if (s == null || s.isEmpty) return null;
+    // Expect "8:00 AM" or "12:30 PM" format
+    final re = RegExp(r'(\d{1,2}):(\d{2})\s*(AM|PM)', caseSensitive: false);
+    final m = re.firstMatch(s);
+    if (m == null) return null;
+    var hour = int.parse(m.group(1)!);
+    final minute = int.parse(m.group(2)!);
+    final period = m.group(3)!.toUpperCase();
+    if (period == 'PM' && hour != 12) hour += 12;
+    if (period == 'AM' && hour == 12) hour = 0;
+    return TimeOfDay(hour: hour, minute: minute);
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _locationController.dispose();
+    _descriptionController.dispose();
+    _customTimeController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _selectDate({bool isEndDate = false}) async {
+    final initial = isEndDate ? _endDate : _selectedDate;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: isEndDate
+          ? _selectedDate
+          : DateTime.now().subtract(const Duration(days: 365)),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+              primary: _navyBlue,
+              secondary: _gold,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setState(() {
+        if (isEndDate) {
+          _endDate = picked;
+        } else {
+          _selectedDate = picked;
+          if (_endDate.isBefore(_selectedDate)) {
+            _endDate = _selectedDate;
+          }
+        }
+      });
+    }
+  }
+
+  Future<void> _selectTime({required bool isStartTime}) async {
+    final initial = isStartTime ? _startTime : _endTime;
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: initial,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+              primary: _navyBlue,
+              secondary: _gold,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setState(() {
+        if (isStartTime) {
+          _startTime = picked;
+        } else {
+          _endTime = picked;
+        }
+      });
+    }
+  }
+
+  String _formatTimeOfDay(TimeOfDay t) {
+    final hour = t.hourOfPeriod == 0 ? 12 : t.hourOfPeriod;
+    final minute = t.minute.toString().padLeft(2, '0');
+    final period = t.period == DayPeriod.am ? 'AM' : 'PM';
+    return '$hour:$minute $period';
+  }
+
+  String _formatDate(DateTime date) {
+    final months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    return '${months[date.month - 1]} ${date.day}, ${date.year}';
+  }
+
+  InputDecoration _buildInputDecoration(
+      String label, String hint, IconData icon,
+      {bool multiline = false}) {
+    final cs = Theme.of(context).colorScheme;
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      prefixIcon: multiline
+          ? Padding(
+              padding: const EdgeInsets.only(bottom: 40),
+              child: Icon(icon, color: _navyBlue),
+            )
+          : Icon(icon, color: _navyBlue),
+      alignLabelWithHint: multiline,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: _navyBlue, width: 2),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: cs.outline.withOpacity(0.5)),
+      ),
+    );
+  }
+
+  Future<void> _updateEvent() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _saving = true);
+    try {
+      final eventData = <String, dynamic>{
+        'title': _nameController.text.trim(),
+        'date': Timestamp.fromDate(_selectedDate),
+        'location': _locationController.text.trim(),
+        'description': _descriptionController.text.trim(),
+        'isCustomTime': _isCustomTime,
+      };
+
+      if (_isCustomTime) {
+        eventData['time'] = _customTimeController.text.trim();
+        // Clear structured time fields
+        eventData['startTime'] = FieldValue.delete();
+        eventData['endTime'] = FieldValue.delete();
+      } else {
+        final startTimeStr = _formatTimeOfDay(_startTime);
+        final endTimeStr = _formatTimeOfDay(_endTime);
+        eventData['startTime'] = startTimeStr;
+        eventData['endTime'] = endTimeStr;
+        eventData['time'] = '$startTimeStr – $endTimeStr';
+      }
+
+      // Only store endDate if multi-day AND dates actually differ
+      final sameDay = _selectedDate.year == _endDate.year &&
+          _selectedDate.month == _endDate.month &&
+          _selectedDate.day == _endDate.day;
+      if (_isMultiDay && !sameDay) {
+        eventData['endDate'] = Timestamp.fromDate(_endDate);
+      } else {
+        eventData['endDate'] = FieldValue.delete();
+      }
+
+      await FirebaseFirestore.instance
+          .collection('events')
+          .doc(widget.docId)
+          .update(eventData);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Event updated successfully!'),
+          backgroundColor: _navyBlue,
+        ),
+      );
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update event: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Scaffold(
+      backgroundColor: isDark ? cs.surface : Colors.white,
+      appBar: AppBar(
+        title: const Text('Edit Event'),
+        backgroundColor: _navyBlue,
+        foregroundColor: Colors.white,
+        elevation: 0,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextFormField(
+                controller: _nameController,
+                decoration: _buildInputDecoration(
+                    'Event Name', 'e.g., Tech Conference', Icons.event),
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? 'Required' : null,
+              ),
+              const SizedBox(height: 16),
+              // Date picker
+              InkWell(
+                onTap: () => _selectDate(),
+                borderRadius: BorderRadius.circular(12),
+                child: InputDecorator(
+                  decoration: InputDecoration(
+                    labelText: _isMultiDay ? 'Start Date' : 'Date',
+                    prefixIcon: Icon(Icons.calendar_today, color: _navyBlue),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide:
+                          BorderSide(color: cs.outline.withOpacity(0.5)),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(_formatDate(_selectedDate)),
+                      Icon(Icons.arrow_drop_down, color: _navyBlue),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Multi-day checkbox
+              Row(
+                children: [
+                  SizedBox(
+                    height: 24,
+                    width: 24,
+                    child: Checkbox(
+                      value: _isMultiDay,
+                      activeColor: _navyBlue,
+                      onChanged: (v) => setState(() {
+                        _isMultiDay = v ?? false;
+                        if (_isMultiDay &&
+                            _endDate.isBefore(_selectedDate)) {
+                          _endDate =
+                              _selectedDate.add(const Duration(days: 1));
+                        }
+                      }),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Multi-day event',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: cs.onSurface.withOpacity(0.8),
+                    ),
+                  ),
+                ],
+              ),
+              if (_isMultiDay) ...[
+                const SizedBox(height: 12),
+                InkWell(
+                  onTap: () => _selectDate(isEndDate: true),
+                  borderRadius: BorderRadius.circular(12),
+                  child: InputDecorator(
+                    decoration: InputDecoration(
+                      labelText: 'End Date',
+                      prefixIcon: Icon(Icons.event, color: _navyBlue),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide:
+                            BorderSide(color: cs.outline.withOpacity(0.5)),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(_formatDate(_endDate)),
+                        Icon(Icons.arrow_drop_down, color: _navyBlue),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 12),
+              // Custom time checkbox
+              Row(
+                children: [
+                  SizedBox(
+                    height: 24,
+                    width: 24,
+                    child: Checkbox(
+                      value: _isCustomTime,
+                      activeColor: _navyBlue,
+                      onChanged: (v) =>
+                          setState(() => _isCustomTime = v ?? false),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Custom time (e.g. TBA, All Day)',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: cs.onSurface.withOpacity(0.8),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // Time input
+              if (_isCustomTime)
+                TextFormField(
+                  controller: _customTimeController,
+                  decoration: _buildInputDecoration(
+                      'Time', 'e.g., TBA, All Day, Morning', Icons.access_time),
+                  validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'Required' : null,
+                )
+              else
+                Row(
+                  children: [
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => _selectTime(isStartTime: true),
+                        borderRadius: BorderRadius.circular(12),
+                        child: InputDecorator(
+                          decoration: InputDecoration(
+                            labelText: 'Start Time',
+                            prefixIcon: Icon(Icons.access_time,
+                                color: _navyBlue, size: 20),
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                  color: cs.outline.withOpacity(0.5)),
+                            ),
+                          ),
+                          child: Text(_formatTimeOfDay(_startTime)),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Text('–',
+                          style: TextStyle(
+                              fontSize: 18, color: cs.onSurface)),
+                    ),
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => _selectTime(isStartTime: false),
+                        borderRadius: BorderRadius.circular(12),
+                        child: InputDecorator(
+                          decoration: InputDecoration(
+                            labelText: 'End Time',
+                            prefixIcon: Icon(Icons.access_time,
+                                color: _navyBlue, size: 20),
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                  color: cs.outline.withOpacity(0.5)),
+                            ),
+                          ),
+                          child: Text(_formatTimeOfDay(_endTime)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _locationController,
+                decoration: _buildInputDecoration('Location',
+                    'e.g., Room C301, Main Auditorium', Icons.location_on_outlined),
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? 'Required' : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _descriptionController,
+                minLines: 3,
+                maxLines: 6,
+                decoration: _buildInputDecoration(
+                    'Description',
+                    'Enter event description...',
+                    Icons.description_outlined,
+                    multiline: true),
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? 'Required' : null,
+              ),
+              const SizedBox(height: 24),
+              FilledButton.icon(
+                onPressed: _saving ? null : _updateEvent,
+                icon: _saving
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.save),
+                label: Text(_saving ? 'Saving...' : 'Save Changes'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: _navyBlue,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
