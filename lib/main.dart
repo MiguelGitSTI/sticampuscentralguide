@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:sticampuscentralguide/theme/theme_provider.dart';
+import 'package:sticampuscentralguide/utils/visitor_mode_provider.dart';
 import 'package:sticampuscentralguide/firebase_options.dart';
 import 'package:sticampuscentralguide/Screens/home_screen.dart';
 import 'package:sticampuscentralguide/Screens/login_screen.dart';
@@ -36,15 +37,21 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (context) => ThemeProvider(),
-      child: Consumer<ThemeProvider>(
-        builder: (context, themeProvider, child) {
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (context) => ThemeProvider()),
+        ChangeNotifierProvider(
+          create: (context) => VisitorModeProvider()..load(),
+        ),
+      ],
+      child: Consumer2<ThemeProvider, VisitorModeProvider>(
+        builder: (context, themeProvider, visitorMode, child) {
           return MaterialApp(
             title: 'STI Campus Central Guide',
             theme: themeProvider.lightTheme,
             darkTheme: themeProvider.darkTheme,
-            themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+            themeMode:
+                themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
             debugShowCheckedModeBanner: false,
             home: const SplashWrapper(),
           );
@@ -84,6 +91,14 @@ class _SplashWrapperState extends State<SplashWrapper> {
   Widget build(BuildContext context) {
     if (_showSplash) {
       return const LoadingScreen();
+    }
+
+    final visitorMode = context.watch<VisitorModeProvider>();
+    if (!visitorMode.loaded) {
+      return const LoadingScreen();
+    }
+    if (visitorMode.isVisitor) {
+      return const HomeScreen();
     }
 
     return StreamBuilder<User?>(

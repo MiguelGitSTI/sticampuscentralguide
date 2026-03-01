@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
 import 'package:sticampuscentralguide/Screens/register_screen.dart';
 import 'package:sticampuscentralguide/utils/auth_service.dart';
+import 'package:sticampuscentralguide/utils/visitor_mode_provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -22,6 +24,10 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _loading = false;
   String? _error;
   bool _obscurePassword = true;
+
+  Future<void> _continueAsVisitor() async {
+    await context.read<VisitorModeProvider>().setVisitor(true);
+  }
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
@@ -238,6 +244,19 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 8),
+                    Center(
+                      child: TextButton(
+                        onPressed: _loading ? null : _continueAsVisitor,
+                        style: TextButton.styleFrom(
+                          foregroundColor: navyBlue,
+                        ),
+                        child: const Text(
+                          'Are you a visitor?',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ),
                     ),
                   ],
                 ),

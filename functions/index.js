@@ -15,7 +15,7 @@ exports.sendQueuedNotification = onDocumentCreated('notifications_outbox/{docId}
   const data = snap.data();
   try {
     const from = String(data.from || 'Notice');
-    const topic = String(data.topic || '').trim();
+    const topic = String(data.topic || '').trim().toLowerCase();
     const message = String(data.message || '').trim();
     if (!topic || !message) {
       console.warn('Missing topic or message');

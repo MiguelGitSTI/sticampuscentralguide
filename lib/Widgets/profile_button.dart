@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
+import 'package:sticampuscentralguide/utils/visitor_mode_provider.dart';
 
 class ProfileButton extends StatefulWidget {
   final VoidCallback onTap;
@@ -126,6 +128,14 @@ class ProfileButtonState extends State<ProfileButton> {
     final sw = MediaQuery.of(context).size.width / 411.0;
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isVisitor = context.watch<VisitorModeProvider>().isVisitor;
+
+    final showVisitor = isVisitor && FirebaseAuth.instance.currentUser == null;
+    final displayName = showVisitor ? 'Visitor' : (_fullName ?? 'Campus User');
+    final displayEmail = showVisitor ? 'Not signed in' : (_email ?? 'Not signed in');
+    final displayInitials = showVisitor ? 'V' : _profileInitials;
+    final showImage = !showVisitor && _profileImagePath != null;
+
     return Material(
       color: Colors.transparent,
       borderRadius: BorderRadius.circular(16),
@@ -146,7 +156,7 @@ class ProfileButtonState extends State<ProfileButton> {
               width: (44 * sw).clamp(38, 54).toDouble(), // Same as icon buttons
               height: (44 * sw).clamp(38, 54).toDouble(), // Same as icon buttons
               decoration: BoxDecoration(
-                color: _profileImagePath == null ? const Color(0xFF123CBE) : null, // NavyBlue background
+                color: showImage ? null : const Color(0xFF123CBE), // NavyBlue background
                 borderRadius: BorderRadius.circular(12), // Rounded square like icon buttons
                 boxShadow: isDark
                     ? const [
@@ -178,7 +188,7 @@ class ProfileButtonState extends State<ProfileButton> {
                         ),
                       ],
               ),
-              child: _profileImagePath != null
+              child: showImage
                   ? ClipRRect(
                       borderRadius: BorderRadius.circular(12),
                       child: Image.file(
@@ -190,7 +200,7 @@ class ProfileButtonState extends State<ProfileButton> {
                     )
                   : Center(
                       child: Text(
-                        _profileInitials,
+                        displayInitials,
                         style: const TextStyle(
                           color: Color(0xFFFFB206), // Gold initials
                           fontWeight: FontWeight.bold,
@@ -206,7 +216,7 @@ class ProfileButtonState extends State<ProfileButton> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  _fullName ?? 'Campus User',
+                  displayName,
                   style: TextStyle(
                     color: cs.onSurface,
                     fontWeight: FontWeight.w600,
@@ -215,7 +225,7 @@ class ProfileButtonState extends State<ProfileButton> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  _email ?? 'Not signed in',
+                  displayEmail,
                   style: TextStyle(
                     color: cs.onSurface.withOpacity(0.7),
                     fontSize: (12 * sw).clamp(10, 14).toDouble(),

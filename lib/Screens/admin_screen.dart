@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
 import 'package:sticampuscentralguide/utils/notification_service.dart';
+import 'package:sticampuscentralguide/utils/visitor_mode_provider.dart';
 
 // Theme colors
 const Color _navyBlue = Color(0xFF123CBE);
@@ -15,10 +17,23 @@ class AdminScreen extends StatefulWidget {
 }
 
 class _AdminScreenState extends State<AdminScreen> {
+  bool _poppedVisitor = false;
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isVisitor = context.watch<VisitorModeProvider>().isVisitor;
+
+    if (isVisitor) {
+      if (!_poppedVisitor) {
+        _poppedVisitor = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) Navigator.of(context).maybePop();
+        });
+      }
+      return const SizedBox.shrink();
+    }
 
     return Scaffold(
       backgroundColor: isDark ? cs.surface : Colors.white,
@@ -202,6 +217,8 @@ class _NotificationSenderScreenState extends State<NotificationSenderScreen> {
   final _messageController = TextEditingController();
   bool _sending = false;
 
+  String _normalizeSendTo(String input) => input.trim().toLowerCase();
+
   @override
   void dispose() {
     _fromController.dispose();
@@ -217,7 +234,7 @@ class _NotificationSenderScreenState extends State<NotificationSenderScreen> {
       final uid = FirebaseAuth.instance.currentUser?.uid;
       await FirebaseFirestore.instance.collection('notifications_outbox').add({
         'from': _fromController.text.trim(),
-        'topic': _topicController.text.trim(),
+        'topic': _normalizeSendTo(_topicController.text),
         'message': _messageController.text.trim(),
         'createdAt': FieldValue.serverTimestamp(),
         'createdByUid': uid,
@@ -372,7 +389,7 @@ class _NotificationSenderScreenState extends State<NotificationSenderScreen> {
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _topicController,
-                      decoration: _buildInputDecoration('Topic', 'e.g., MAWD302, all, Important', Icons.topic_outlined),
+                      decoration: _buildInputDecoration('Send To', 'e.g., mawd302, all, important', Icons.topic_outlined),
                       validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
                     ),
                     const SizedBox(height: 16),
@@ -488,7 +505,7 @@ class _NotificationSenderScreenState extends State<NotificationSenderScreen> {
                             overflow: TextOverflow.ellipsis,
                           ),
                           subtitle: Text(
-                            'From: ${d['from'] ?? ''}  •  Topic: ${d['topic'] ?? ''}\n$timeStr',
+                            'From: ${d['from'] ?? ''}  •  Send To: ${d['topic'] ?? ''}\n$timeStr',
                           ),
                           isThreeLine: true,
                           trailing: IconButton(

@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:sticampuscentralguide/theme/theme_provider.dart';
 import 'package:sticampuscentralguide/utils/auth_service.dart';
+import 'package:sticampuscentralguide/utils/visitor_mode_provider.dart';
 import 'package:sticampuscentralguide/Screens/admin_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -27,6 +28,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late final StreamSubscription<User?> _authSubscription;
   String? _lastUid;
 
+  Timer? _adminRevealTimer;
+  DateTime? _suppressAdminUntil;
+
   @override
   void initState() {
     super.initState();
@@ -43,8 +47,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   void dispose() {
+    _adminRevealTimer?.cancel();
     _authSubscription.cancel();
     super.dispose();
+  }
+
+  void _suppressAdminFor(Duration duration) {
+    _adminRevealTimer?.cancel();
+    _suppressAdminUntil = DateTime.now().add(duration);
+    _adminRevealTimer = Timer(duration, () {
+      if (!mounted) return;
+      setState(() {
+        _suppressAdminUntil = null;
+      });
+    });
   }
 
   Future<void> _loadProfileData() async {
@@ -241,6 +257,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final isVisitor = context.watch<VisitorModeProvider>().isVisitor;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Settings'),
@@ -317,7 +334,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         width: 44,
                         height: 44,
                         decoration: BoxDecoration(
-                          color: _profileImagePath == null ? const Color(0xFF123CBE) : null,
+                          color: (isVisitor && _user == null)
+                              ? const Color(0xFF123CBE)
+                              : (_profileImagePath == null ? const Color(0xFF123CBE) : null),
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: const [
                             BoxShadow(
@@ -328,7 +347,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           ],
                         ),
-                        child: _profileImagePath != null
+                        child: _profileImagePath != null && !(isVisitor && _user == null)
                             ? ClipRRect(
                                 borderRadius: BorderRadius.circular(12),
                                 child: Image.file(
@@ -340,7 +359,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               )
                             : Center(
                                 child: Text(
-                                  _profileInitials,
+                                  (isVisitor && _user == null) ? 'V' : _profileInitials,
                                   style: const TextStyle(
                                     color: Color(0xFFFFB206),
                                     fontWeight: FontWeight.bold,
@@ -356,7 +375,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              _fullName ?? _user?.displayName ?? 'Campus User',
+                              (isVisitor && _user == null)
+                                  ? 'Visitor'
+                                  : (_fullName ?? _user?.displayName ?? 'Campus User'),
                               style: TextStyle(
                                 color: cs.onSurface,
                                 fontWeight: FontWeight.w600,
@@ -365,13 +386,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              _user?.email ?? 'Not signed in',
+                              (isVisitor && _user == null)
+                                  ? 'Not signed in'
+                                  : (_user?.email ?? 'Not signed in'),
                               style: TextStyle(
                                 color: cs.onSurface.withOpacity(0.7),
                                 fontSize: 14,
                               ),
                             ),
-                            if (_section != null && _section!.isNotEmpty) ...[
+                            if (isVisitor && _user == null) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                'Section: No Section (Visitor)',
+                                style: TextStyle(
+                                  color: cs.onSurface.withOpacity(0.7),
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ] else if (_section != null && _section!.isNotEmpty) ...[
                               const SizedBox(height: 2),
                               Text(
                                 'Section: ${_section!}',
@@ -527,12 +559,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               const SizedBox(height: 24),
+              if (isVisitor && _user == null)
+                Center(
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.login),
+                    label: const Text('Log In'),
+                    onPressed: () async {
+                      // Avoid flashing the admin button during the transition.
+                      _suppressAdminFor(const Duration(seconds: 1));
+                      await context.read<VisitorModeProvider>().setVisitor(false);
+                      if (mounted) {
+                        Navigator.of(context).pop();
+                      }
+                    },
+                  ),
+                ),
+              if (isVisitor && _user == null) const SizedBox(height: 12),
               if (_user != null)
                 Center(
                   child: OutlinedButton.icon(
                     icon: const Icon(Icons.logout),
                     label: const Text('Sign Out'),
                     onPressed: () async {
+                      await context.read<VisitorModeProvider>().setVisitor(false);
                       await FirebaseAuth.instance.signOut();
                       if (mounted) {
                         Navigator.of(context).pop();
@@ -581,7 +630,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
               const SizedBox(height: 12),
-              if (_isAdmin)
+              if (_isAdmin && !isVisitor && (_suppressAdminUntil == null || DateTime.now().isAfter(_suppressAdminUntil!)))
                 Center(
                   child: FilledButton.icon(
                     icon: const Icon(Icons.admin_panel_settings),
