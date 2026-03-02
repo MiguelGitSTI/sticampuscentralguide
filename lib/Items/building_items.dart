@@ -44,7 +44,7 @@ const List<BuildingItem> kBuildingItems = [
     y: -0.11,
     scale: 0.125, // width fraction
     z: 2,
-    label: 'Main Building',
+    label: 'Building B',
     hidden: false,
   ),
   // Top-right gym building (centered for now)

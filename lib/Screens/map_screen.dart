@@ -12,12 +12,15 @@ class MapScreen extends StatefulWidget {
   State<MapScreen> createState() => _MapScreenState();
 }
 
-class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixin {
+class _MapScreenState extends State<MapScreen>
+    with SingleTickerProviderStateMixin {
   late final TransformationController _transformationController;
   final GlobalKey _viewerKey = GlobalKey();
-  String? _activeBuildingId; // building with overlay card open (also drives scale)
+  String?
+  _activeBuildingId; // building with overlay card open (also drives scale)
   bool _cardVisible = false; // when true, show the info card above the map
-  _OverlayAction _activeAction = _OverlayAction.info; // which action's content to show
+  _OverlayAction _activeAction =
+      _OverlayAction.info; // which action's content to show
   bool _hasInitializedPosition = false;
 
   late final AnimationController _zoomController;
@@ -81,6 +84,22 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     });
   }
 
+  void _closeCard() {
+    if (!_cardVisible) return;
+    setState(() {
+      _cardVisible = false;
+    });
+  }
+
+  void _onMapBackgroundTap() {
+    // If a section card is open, tapping empty space should just close the card.
+    if (_cardVisible) {
+      _closeCard();
+      return;
+    }
+    _clearSelection();
+  }
+
   void _cancelZoomAnimation() {
     // Null out BEFORE reset so _onZoomTick won't snap back to _zoomBegin
     _zoomBegin = null;
@@ -120,12 +139,16 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       final vp = render.size;
       final currentScale = _transformationController.value.getMaxScaleOnAxis();
       // Use 2.4 as default, but if user is zoomed in more, bring it back down to 2.4
-      final targetScale = currentScale > 2.4 ? 2.4 : (currentScale < 2.4 ? 2.4 : currentScale);
+      final targetScale = currentScale > 2.4
+          ? 2.4
+          : (currentScale < 2.4 ? 2.4 : currentScale);
 
       final center = _buildingViewportCenter(b, vp);
 
       assert(() {
-        debugPrint('[Map] Zoom → ${b.id}: center=(${center.dx.toStringAsFixed(1)}, ${center.dy.toStringAsFixed(1)}), vp=(${vp.width.toStringAsFixed(0)}x${vp.height.toStringAsFixed(0)})');
+        debugPrint(
+          '[Map] Zoom → ${b.id}: center=(${center.dx.toStringAsFixed(1)}, ${center.dy.toStringAsFixed(1)}), vp=(${vp.width.toStringAsFixed(0)}x${vp.height.toStringAsFixed(0)})',
+        );
         return true;
       }());
 
@@ -159,14 +182,27 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     _transformationController.value = lerped;
   }
 
+  bool _hasNavigationImages(String buildingId) {
+    switch (buildingId) {
+      case 'gym_top_right':
+      case 'building_b':
+      case 'building_c':
+      case 'airport':
+        return true;
+      default:
+        return false;
+    }
+  }
+
   String _buildActionBodyText(BuildingOverlaySpec spec) {
     switch (_activeAction) {
       case _OverlayAction.info:
         return spec.description;
       case _OverlayAction.navigate:
-        return spec.navigateText ?? 'Navigate to ${spec.title}. This opens your preferred maps app with campus directions and nearest entrances.';
-      case _OverlayAction.rooms:
-        return spec.roomsText ?? 'Rooms and facilities for ${spec.title} will appear here. Check back for detailed room listings, schedules, and points of interest.';
+        // If a building has a dedicated navigation image, let the image be the content.
+        if (_hasNavigationImages(spec.id)) return '';
+        return spec.navigateText ??
+            'Navigate to ${spec.title}. This opens your preferred maps app with campus directions and nearest entrances.';
     }
   }
 
@@ -182,6 +218,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final overlayTopPadding = kToolbarHeight + 8;
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
@@ -219,8 +256,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                     maxScale: 4.0,
                     boundaryMargin: EdgeInsets.zero,
                     clipBehavior: Clip.hardEdge,
-                    panEnabled: true,
-                    scaleEnabled: true,
+                    panEnabled: !_cardVisible,
+                    scaleEnabled: !_cardVisible,
                     onInteractionStart: (_) {
                       _cancelZoomAnimation();
                       // Mark as initialized once user interacts
@@ -245,7 +282,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                             Positioned.fill(
                               child: GestureDetector(
                                 behavior: HitTestBehavior.translucent,
-                                onTap: _clearSelection,
+                                onTap: _onMapBackgroundTap,
                                 child: const SizedBox.expand(),
                               ),
                             ),
@@ -258,8 +295,13 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                                 ignoring: true,
                                 child: ClipRect(
                                   child: BackdropFilter(
-                                    filter: ImageFilter.blur(sigmaX: 1, sigmaY: 1),
-                                    child: Container(color: Colors.black.withOpacity(0.08)),
+                                    filter: ImageFilter.blur(
+                                      sigmaX: 1,
+                                      sigmaY: 1,
+                                    ),
+                                    child: Container(
+                                      color: Colors.black.withOpacity(0.08),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -274,6 +316,19 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                 ),
               ),
             ),
+
+            // When a card is open, freeze map gestures/taps and allow tapping empty space to close.
+            // (Overlay card itself is above this layer and remains interactive.)
+            if (_cardVisible)
+              Positioned.fill(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onTap: _closeCard,
+                  onScaleStart: (_) {},
+                  child: const SizedBox.expand(),
+                ),
+              ),
+
             // Bottom buttons outside the map, above nav bar
             if (_activeBuildingId != null && !_cardVisible)
               Align(
@@ -287,7 +342,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
               Align(
                 alignment: Alignment.topCenter,
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
+                  padding: EdgeInsets.fromLTRB(16, overlayTopPadding, 16, 0),
                   child: _buildOverlayCard(_activeBuildingId!),
                 ),
               ),
@@ -307,7 +362,17 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   }
 
   List<Widget> _buildSelectedBuilding(String buildingId) {
-    final match = kBuildingItems.firstWhere((b) => b.id == buildingId, orElse: () => const BuildingItem(id: '', asset: '', x: 0, y: 0, scale: 0, hidden: true));
+    final match = kBuildingItems.firstWhere(
+      (b) => b.id == buildingId,
+      orElse: () => const BuildingItem(
+        id: '',
+        asset: '',
+        x: 0,
+        y: 0,
+        scale: 0,
+        hidden: true,
+      ),
+    );
     if (match.hidden || match.id.isEmpty) return const [];
     return [_buildBuildingWidget(match)];
   }
@@ -370,6 +435,21 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     final maxW = media.width * 0.85;
     final cardW = maxW.clamp(260.0, 420.0);
 
+    final bodyText = _buildActionBodyText(spec);
+
+    // Navigate view: show an outer card containing an inner pannable/zoomable image card.
+    if (_activeAction == _OverlayAction.navigate &&
+        _hasNavigationImages(buildingId)) {
+      final navMaxW = (media.width * 0.94).clamp(280.0, 720.0);
+      return ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: navMaxW),
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: _BuildingNavImages(buildingId: buildingId),
+        ),
+      );
+    }
+
     return AnimatedOpacity(
       opacity: 1.0,
       duration: const Duration(milliseconds: 150),
@@ -379,9 +459,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         shadowColor: Colors.black26,
         borderRadius: BorderRadius.circular(8),
         child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxWidth: cardW,
-          ),
+          constraints: BoxConstraints(maxWidth: cardW),
           child: Padding(
             padding: const EdgeInsets.all(12.0),
             child: Column(
@@ -397,13 +475,17 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                   ),
                 ),
                 const SizedBox(height: 8),
-                // Building description images (e.g., files named like `<id>_desc*.png/jpg/webp`)
-                _BuildingDescImages(buildingId: buildingId),
+                // Building images: info uses *_desc, navigate uses *_navigation
+                if (_activeAction == _OverlayAction.navigate)
+                  _BuildingNavImages(buildingId: buildingId)
+                else
+                  _BuildingDescImages(buildingId: buildingId),
                 const SizedBox(height: 8),
-                Text(
-                  _buildActionBodyText(spec),
-                  style: const TextStyle(fontSize: 13, color: Colors.black87),
-                ),
+                if (bodyText.trim().isNotEmpty)
+                  Text(
+                    bodyText,
+                    style: const TextStyle(fontSize: 13, color: Colors.black87),
+                  ),
               ],
             ),
           ),
@@ -414,33 +496,55 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
 
   // Bottom button bar outside the map canvas
   Widget _buildBottomButtons(String buildingId) {
-    final isBC = buildingId == 'building_b' || buildingId == 'building_c';
+    final canNavigate =
+        _hasNavigationImages(buildingId) &&
+        buildingId != 'cottage' &&
+        buildingId != 'gate';
     final buttons = <_OverlayBtnSpec>[
-      const _OverlayBtnSpec(icon: Icons.info_outline, label: 'Info', action: _OverlayAction.info),
-      const _OverlayBtnSpec(icon: Icons.map_outlined, label: 'Navigate', action: _OverlayAction.navigate),
-      if (isBC) const _OverlayBtnSpec(icon: Icons.meeting_room_outlined, label: 'Rooms', action: _OverlayAction.rooms),
+      const _OverlayBtnSpec(
+        icon: Icons.info_outline,
+        label: 'Info',
+        action: _OverlayAction.info,
+      ),
+      if (canNavigate)
+        const _OverlayBtnSpec(
+          icon: Icons.map_outlined,
+          label: 'Navigate',
+          action: _OverlayAction.navigate,
+        ),
     ];
 
     return Material(
       color: Colors.transparent,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final double containerHPad = 12; // matches Container horizontal padding
+          final double containerHPad =
+              12; // matches Container horizontal padding
           final double innerSpacing = 8; // spacing between buttons
           final int count = buttons.length;
-          final double availableW = constraints.maxWidth - (2 * containerHPad) - ((count - 1) * innerSpacing);
+          final double availableW =
+              constraints.maxWidth -
+              (2 * containerHPad) -
+              ((count - 1) * innerSpacing);
           final double perBtnW = (availableW / count).clamp(92.0, 160.0);
 
           return Stack(
             clipBehavior: Clip.none,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: ThemeProvider.navyBlue.withOpacity(0.70),
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 10, offset: const Offset(0, 6)),
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.08),
+                      blurRadius: 10,
+                      offset: const Offset(0, 6),
+                    ),
                   ],
                 ),
                 child: Row(
@@ -458,7 +562,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                           }),
                         ),
                       ),
-                      if (i != buttons.length - 1) SizedBox(width: innerSpacing),
+                      if (i != buttons.length - 1)
+                        SizedBox(width: innerSpacing),
                     ],
                   ],
                 ),
@@ -469,21 +574,28 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       ),
     );
   }
-
 }
 
 class _OverlayBtnSpec {
   final IconData icon;
   final String label;
   final _OverlayAction action;
-  const _OverlayBtnSpec({required this.icon, required this.label, required this.action});
+  const _OverlayBtnSpec({
+    required this.icon,
+    required this.label,
+    required this.action,
+  });
 }
 
 class _OverlayButton extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
-  const _OverlayButton({required this.icon, required this.label, required this.onTap});
+  const _OverlayButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -496,7 +608,11 @@ class _OverlayButton extends StatelessWidget {
           color: ThemeProvider.navyBlue,
           borderRadius: BorderRadius.circular(10),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 6, offset: const Offset(0, 3)),
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 6,
+              offset: const Offset(0, 3),
+            ),
           ],
         ),
         child: Row(
@@ -504,15 +620,17 @@ class _OverlayButton extends StatelessWidget {
           children: [
             Icon(icon, size: 18, color: ThemeProvider.gold),
             const SizedBox(width: 6),
-            Flexible(child: Text(
-              label,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: ThemeProvider.gold,
+            Flexible(
+              child: Text(
+                label,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: ThemeProvider.gold,
+                ),
               ),
-            )),
+            ),
           ],
         ),
       ),
@@ -520,7 +638,100 @@ class _OverlayButton extends StatelessWidget {
   }
 }
 
-enum _OverlayAction { info, navigate, rooms }
+enum _OverlayAction { info, navigate }
+
+class _BuildingNavImages extends StatefulWidget {
+  final String buildingId;
+  const _BuildingNavImages({required this.buildingId});
+
+  @override
+  State<_BuildingNavImages> createState() => _BuildingNavImagesState();
+}
+
+class _BuildingNavImagesState extends State<_BuildingNavImages> {
+  static const double _minZoom = 1.2;
+  static const double _maxZoom = 6.0;
+
+  late final TransformationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TransformationController(Matrix4.identity()..scale(_minZoom));
+  }
+
+  @override
+  void didUpdateWidget(covariant _BuildingNavImages oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.buildingId != widget.buildingId) {
+      _controller.value = Matrix4.identity()..scale(_minZoom);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  String? _fileFor(String id) {
+    switch (id) {
+      case 'gym_top_right':
+        return 'assets/images/gym_navigation.jpg';
+      case 'building_b':
+        return 'assets/images/buildingb_navigation.jpg';
+      case 'building_c':
+        return 'assets/images/buildingc_navigation.jpg';
+      case 'airport':
+        // "Building A" navigation asset is used for Airport.
+        return 'assets/images/buildinga_navigation.jpg';
+      default:
+        return null;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final path = _fileFor(widget.buildingId);
+    if (path == null) return const SizedBox.shrink();
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        // Slightly larger max height for navigation images, since users will zoom/pan.
+        final h = (w * 9 / 16).clamp(160.0, 320.0);
+        return SizedBox(
+          width: w,
+          height: h,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+            child: InteractiveViewer(
+              transformationController: _controller,
+              minScale: _minZoom,
+              maxScale: _maxZoom,
+              panEnabled: true,
+              scaleEnabled: true,
+              boundaryMargin: const EdgeInsets.all(24),
+              child: Material(
+                color: Colors.white,
+                elevation: 3,
+                borderRadius: BorderRadius.circular(18),
+                clipBehavior: Clip.antiAlias,
+                child: Image.asset(
+                  path,
+                  fit: BoxFit.contain,
+                  filterQuality: FilterQuality.medium,
+                  errorBuilder: (context, error, stack) =>
+                      _ImageNameFallback(path: path, width: w, height: h),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
 
 class _BuildingDescImages extends StatelessWidget {
   final String buildingId;
@@ -560,7 +771,10 @@ class _BuildingDescImages extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final w = constraints.maxWidth;
-        final h = (w * 9 / 16).clamp(120.0, 220.0); // fit to card width, reasonable height
+        final h = (w * 9 / 16).clamp(
+          120.0,
+          220.0,
+        ); // fit to card width, reasonable height
         if (files.length == 1) {
           final path = files.first;
           return SizedBox(
@@ -572,7 +786,8 @@ class _BuildingDescImages extends StatelessWidget {
                 path,
                 fit: BoxFit.cover,
                 filterQuality: FilterQuality.medium,
-                errorBuilder: (context, error, stack) => _ImageNameFallback(path: path, width: w, height: h),
+                errorBuilder: (context, error, stack) =>
+                    _ImageNameFallback(path: path, width: w, height: h),
               ),
             ),
           );
@@ -595,7 +810,8 @@ class _BuildingDescImages extends StatelessWidget {
                   path,
                   fit: BoxFit.cover,
                   filterQuality: FilterQuality.medium,
-                  errorBuilder: (context, error, stack) => _ImageNameFallback(path: path, width: w, height: h),
+                  errorBuilder: (context, error, stack) =>
+                      _ImageNameFallback(path: path, width: w, height: h),
                 );
               },
             ),
@@ -610,7 +826,11 @@ class _ImageNameFallback extends StatelessWidget {
   final String path;
   final double width;
   final double height;
-  const _ImageNameFallback({required this.path, required this.width, required this.height});
+  const _ImageNameFallback({
+    required this.path,
+    required this.width,
+    required this.height,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -625,7 +845,11 @@ class _ImageNameFallback extends StatelessWidget {
       child: Center(
         child: Text(
           fileName,
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white70),
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: Colors.white70,
+          ),
         ),
       ),
     );

@@ -31,22 +31,22 @@ class BuildingOverlaySpec {
 const Map<String, BuildingOverlaySpec> kBuildingOverlays = {
 	'building_b': BuildingOverlaySpec(
 		id: 'building_b',
-		title: 'Main Building',
-		description: 'Academic rooms, admin offices, and labs.',
+		title: 'Building B',
+		description: 'A building filled with classrooms and a cafeteria, also with proware where you could try out and get clothes.',
 		alignmentX: -0.15,
 		alignmentY: -0.55,
 	),
 	'gym_top_right': BuildingOverlaySpec(
 		id: 'gym_top_right',
 		title: 'Gym',
-		description: 'Indoor court and fitness area.',
+		description: 'A place where official events are held. You can also find students partaking in their PE class below.',
 		alignmentX: 0.70,
 		alignmentY: -0.75,
 	),
 	'building_c': BuildingOverlaySpec(
 		id: 'building_c',
 		title: 'Building C',
-		description: 'Lecture halls and project spaces.',
+		description: 'A building filled with classrooms and a cafeteria, with a PE area below the building.',
 		alignmentX: 0.68,
 		alignmentY: 0.05,
 	),
@@ -67,7 +67,7 @@ const Map<String, BuildingOverlaySpec> kBuildingOverlays = {
 	'airport': BuildingOverlaySpec(
 		id: 'airport',
 		title: 'Airport',
-		description: 'Transport hub: arrivals, departures & shuttle bay.',
+		description: 'A building where you can find most of the admin offices (registrar, cashier).',
 		alignmentX: 0.82,
 		alignmentY: 0.58,
 		maxWidth: 260,
