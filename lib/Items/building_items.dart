@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// Canonical map canvas size that all positions are relative to.
-/// The backing image `assets/images/map_map.png` is 1024x768.
+/// The backing image `assets/images/map/base/map_map.png` is 1024x768.
 class MapSpec {
   static const double width = 1024;
   static const double height = 768;
@@ -39,7 +39,7 @@ const List<BuildingItem> kBuildingItems = [
   // Main multi-story building (centered for now)
   BuildingItem(
     id: 'building_b',
-    asset: 'assets/images/map_buildingb.png',
+    asset: 'assets/images/map/buildings/map_buildingb.png',
     x: -0.345,
     y: -0.11,
     scale: 0.125, // width fraction
@@ -50,7 +50,7 @@ const List<BuildingItem> kBuildingItems = [
   // Top-right gym building (centered for now)
   BuildingItem(
     id: 'gym_top_right',
-    asset: 'assets/images/map_gym.png',
+    asset: 'assets/images/map/buildings/map_gym.png',
     x: 0.49,
     y: -0.28,
     scale: 0.119,
@@ -61,7 +61,7 @@ const List<BuildingItem> kBuildingItems = [
   // Bottom-right curved-roof building (centered for now)
   BuildingItem(
     id: 'building_c',
-    asset: 'assets/images/map_buildingc.png',
+    asset: 'assets/images/map/buildings/map_buildingc.png',
     x: 0.47,
     y: 0.178,
     scale: 0.103,
@@ -72,7 +72,7 @@ const List<BuildingItem> kBuildingItems = [
   // Gazebo + tree (centered for now)
   BuildingItem(
     id: 'cottage',
-    asset: 'assets/images/map_cottage.png',
+    asset: 'assets/images/map/buildings/map_cottage.png',
     x: -0.25,
     y: 0.042,
     scale: 0.017,
@@ -83,7 +83,7 @@ const List<BuildingItem> kBuildingItems = [
   // Guardhouse/gate (centered for now)
   BuildingItem(
     id: 'gate',
-    asset: 'assets/images/map_gate.png',
+    asset: 'assets/images/map/buildings/map_gate.png',
     x: -0.95,
     y: 0.24,
     scale: 0.023,
@@ -94,7 +94,7 @@ const List<BuildingItem> kBuildingItems = [
   // Airport (new) – approximate placement; adjust x,y & scale as needed
   BuildingItem(
     id: 'airport',
-    asset: 'assets/images/map_airport.png',
+    asset: 'assets/images/map/buildings/map_airport.png',
     x: -0.56, // near far right
     y: 0.25, // lower area
     scale: 0.14, // adjust after visRual check

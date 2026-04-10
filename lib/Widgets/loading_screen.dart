@@ -37,9 +37,8 @@ class LoadingScreen extends StatefulWidget {
   State<LoadingScreen> createState() => _LoadingScreenState();
 }
 
-class _LoadingScreenState extends State<LoadingScreen> 
+class _LoadingScreenState extends State<LoadingScreen>
     with SingleTickerProviderStateMixin {
-  
   // Animation states
   int _animationState = 0;
   double _progress = 0.0;
@@ -52,14 +51,14 @@ class _LoadingScreenState extends State<LoadingScreen>
   Timer? _failsafeTimer;
 
   // Assets
-  static const String _iconComplete = 'assets/images/icon_complete.webp';
-  static const String _iconZero = 'assets/images/icon_zero.webp';
+  static const String _iconComplete = 'assets/images/app/icon_complete.webp';
+  static const String _iconZero = 'assets/images/app/icon_zero.webp';
   String _zeroAssetInUse = _iconComplete; // fallback
 
   @override
   void initState() {
     super.initState();
-    
+
     // Bounce animation with overshoot
     _bounceController = AnimationController(
       vsync: this,
@@ -213,4 +212,3 @@ class _LoadingScreenState extends State<LoadingScreen>
     );
   }
 }
-

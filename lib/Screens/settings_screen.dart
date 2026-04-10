@@ -67,9 +67,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final prefs = await SharedPreferences.getInstance();
     final currentUser = FirebaseAuth.instance.currentUser;
     final storedUid = prefs.getString('profile_user_uid');
-    
+
     // If user changed, clear old cached data
-    if (currentUser != null && storedUid != null && storedUid != currentUser.uid) {
+    if (currentUser != null &&
+        storedUid != null &&
+        storedUid != currentUser.uid) {
       await prefs.remove('user_full_name');
       await prefs.remove('user_section');
       await prefs.remove('user_admin');
@@ -78,7 +80,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } else if (currentUser != null && storedUid == null) {
       await prefs.setString('profile_user_uid', currentUser.uid);
     }
-    
+
     // Load profile image from local storage
     final imagePath = prefs.getString('profile_image_path');
     if (imagePath != null && File(imagePath).existsSync()) {
@@ -86,25 +88,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } else {
       _profileImagePath = null;
     }
-    
+
     _user = currentUser;
     _fullName = prefs.getString('user_full_name');
     _section = prefs.getString('user_section');
     _isAdmin = prefs.getBool('user_admin') ?? false;
-    
+
     // Derive initials from email
     if (_user != null) {
       final email = _user!.email ?? '';
       final prefix = email.split('@').first;
       if (prefix.isNotEmpty) {
         final parts = prefix.split(RegExp(r'[._-]'));
-        final initials = parts.take(2).map((p) => p.isNotEmpty ? p[0].toUpperCase() : '').join();
+        final initials = parts
+            .take(2)
+            .map((p) => p.isNotEmpty ? p[0].toUpperCase() : '')
+            .join();
         if (initials.trim().isNotEmpty) {
           _profileInitials = initials;
         }
       }
     }
-    
+
     if (mounted) setState(() {});
   }
 
@@ -186,7 +191,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         maxHeight: 300,
         imageQuality: 80,
       );
-      
+
       if (image != null) {
         setState(() {
           _profileImagePath = image.path;
@@ -233,11 +238,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ],
             ),
-            child: Icon(
-              icon,
-              color: const Color(0xFFFFB206),
-              size: 24,
-            ),
+            child: Icon(icon, color: const Color(0xFFFFB206), size: 24),
           ),
           const SizedBox(height: 8),
           Text(
@@ -289,7 +290,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: themeProvider.isDarkMode ? cs.surfaceVariant : cs.surface,
+                    color: themeProvider.isDarkMode
+                        ? cs.surfaceVariant
+                        : cs.surface,
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: themeProvider.isDarkMode
                         ? const [
@@ -336,7 +339,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         decoration: BoxDecoration(
                           color: (isVisitor && _user == null)
                               ? const Color(0xFF123CBE)
-                              : (_profileImagePath == null ? const Color(0xFF123CBE) : null),
+                              : (_profileImagePath == null
+                                    ? const Color(0xFF123CBE)
+                                    : null),
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: const [
                             BoxShadow(
@@ -347,7 +352,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           ],
                         ),
-                        child: _profileImagePath != null && !(isVisitor && _user == null)
+                        child:
+                            _profileImagePath != null &&
+                                !(isVisitor && _user == null)
                             ? ClipRRect(
                                 borderRadius: BorderRadius.circular(12),
                                 child: Image.file(
@@ -359,7 +366,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               )
                             : Center(
                                 child: Text(
-                                  (isVisitor && _user == null) ? 'V' : _profileInitials,
+                                  (isVisitor && _user == null)
+                                      ? 'V'
+                                      : _profileInitials,
                                   style: const TextStyle(
                                     color: Color(0xFFFFB206),
                                     fontWeight: FontWeight.bold,
@@ -377,7 +386,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             Text(
                               (isVisitor && _user == null)
                                   ? 'Visitor'
-                                  : (_fullName ?? _user?.displayName ?? 'Campus User'),
+                                  : (_fullName ??
+                                        _user?.displayName ??
+                                        'Campus User'),
                               style: TextStyle(
                                 color: cs.onSurface,
                                 fontWeight: FontWeight.w600,
@@ -403,7 +414,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   fontSize: 13,
                                 ),
                               ),
-                            ] else if (_section != null && _section!.isNotEmpty) ...[
+                            ] else if (_section != null &&
+                                _section!.isNotEmpty) ...[
                               const SizedBox(height: 2),
                               Text(
                                 'Section: ${_section!}',
@@ -441,7 +453,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: themeProvider.isDarkMode ? cs.surfaceVariant : cs.surface,
+                  color: themeProvider.isDarkMode
+                      ? cs.surfaceVariant
+                      : cs.surface,
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: themeProvider.isDarkMode
                       ? const [
@@ -483,7 +497,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   children: [
                     const Icon(
                       Icons.dark_mode_outlined,
-                      color: Color(0xFF123CBE),
+                      color: Color(0xFFFFB206),
                       size: 24,
                     ),
                     const SizedBox(width: 16),
@@ -518,7 +532,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             themeProvider.toggleTheme();
                           },
                           activeColor: const Color(0xFF123CBE),
-                          activeTrackColor: const Color(0xFF123CBE).withOpacity(0.3),
+                          activeTrackColor: const Color(
+                            0xFF123CBE,
+                          ).withOpacity(0.3),
                         );
                       },
                     ),
@@ -530,7 +546,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: themeProvider.isDarkMode ? cs.surfaceVariant : cs.surface,
+                  color: themeProvider.isDarkMode
+                      ? cs.surfaceVariant
+                      : cs.surface,
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: themeProvider.isDarkMode
                       ? const [
@@ -567,7 +585,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     onPressed: () async {
                       // Avoid flashing the admin button during the transition.
                       _suppressAdminFor(const Duration(seconds: 1));
-                      await context.read<VisitorModeProvider>().setVisitor(false);
+                      await context.read<VisitorModeProvider>().setVisitor(
+                        false,
+                      );
                       if (mounted) {
                         Navigator.of(context).pop();
                       }
@@ -581,7 +601,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     icon: const Icon(Icons.logout),
                     label: const Text('Sign Out'),
                     onPressed: () async {
-                      await context.read<VisitorModeProvider>().setVisitor(false);
+                      await context.read<VisitorModeProvider>().setVisitor(
+                        false,
+                      );
                       await FirebaseAuth.instance.signOut();
                       if (mounted) {
                         Navigator.of(context).pop();
@@ -594,17 +616,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Center(
                   child: OutlinedButton.icon(
                     icon: const Icon(Icons.delete_outline),
-                    style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.red,
+                    ),
                     label: const Text('Delete Account'),
                     onPressed: () async {
                       final confirmed = await showDialog<bool>(
                         context: context,
                         builder: (ctx) => AlertDialog(
                           title: const Text('Delete account?'),
-                          content: const Text('This will permanently delete your account and data.'),
+                          content: const Text(
+                            'This will permanently delete your account and data.',
+                          ),
                           actions: [
-                            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-                            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete')),
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, false),
+                              child: const Text('Cancel'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, true),
+                              child: const Text('Delete'),
+                            ),
                           ],
                         ),
                       );
@@ -613,16 +645,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           await AuthService().deleteAccountAndData();
                           if (!mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Account deleted')),);
+                            const SnackBar(content: Text('Account deleted')),
+                          );
                           Navigator.of(context).pop();
                         } on FirebaseAuthException catch (e) {
                           // Requires recent login
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Delete failed: ${e.message ?? e.code}. Please sign in again.')),
+                            SnackBar(
+                              content: Text(
+                                'Delete failed: ${e.message ?? e.code}. Please sign in again.',
+                              ),
+                            ),
                           );
                         } catch (e) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Delete failed. Please try again.')),
+                            const SnackBar(
+                              content: Text('Delete failed. Please try again.'),
+                            ),
                           );
                         }
                       }
@@ -630,7 +669,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
               const SizedBox(height: 12),
-              if (_isAdmin && !isVisitor && (_suppressAdminUntil == null || DateTime.now().isAfter(_suppressAdminUntil!)))
+              if (_isAdmin &&
+                  !isVisitor &&
+                  (_suppressAdminUntil == null ||
+                      DateTime.now().isAfter(_suppressAdminUntil!)))
                 Center(
                   child: FilledButton.icon(
                     icon: const Icon(Icons.admin_panel_settings),

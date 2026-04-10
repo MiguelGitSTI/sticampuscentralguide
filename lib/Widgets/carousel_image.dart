@@ -11,14 +11,13 @@ class CustomCarouselFB2 extends StatefulWidget {
 }
 
 class _CustomCarouselFB2State extends State<CustomCarouselFB2> {
-
   // - - - - - - - - - - - - Instructions - - - - - - - - - - - - - -
-  // 1.Replace cards list with whatever widgets you'd like. 
+  // 1.Replace cards list with whatever widgets you'd like.
   // 2.Change the widgetMargin attribute, to ensure good spacing on all screensize.
   // 3.If you have a problem with this widget, please contact us at flutterbricks90@gmail.com
   // Learn to build this widget at https://www.youtube.com/watch?v=dSMw1Nb0QVg!
-  // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-  
+  // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
   late final List<_CarouselItem> items;
   int _currentPage = 0;
 
@@ -35,7 +34,10 @@ class _CustomCarouselFB2State extends State<CustomCarouselFB2> {
   void initState() {
     super.initState();
     // Temporary controller; real fraction is set in didChangeDependencies
-    _pageController = PageController(initialPage: 0, viewportFraction: _viewportFraction);
+    _pageController = PageController(
+      initialPage: 0,
+      viewportFraction: _viewportFraction,
+    );
     items = _kCarouselItems;
   }
 
@@ -46,18 +48,26 @@ class _CustomCarouselFB2State extends State<CustomCarouselFB2> {
     final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
     // Target portrait width; clamp to available width minus margins
     final targetWidth = 260.0;
-    final maxWidth = (screenWidth - 2 * carouselItemMargin - 8).clamp(180.0, targetWidth);
+    final maxWidth = (screenWidth - 2 * carouselItemMargin - 8).clamp(
+      180.0,
+      targetWidth,
+    );
     final newCardWidth = maxWidth;
-    final newViewportFraction = ((newCardWidth + 2 * carouselItemMargin) / screenWidth).clamp(0.6, 1.0);
+    final newViewportFraction =
+        ((newCardWidth + 2 * carouselItemMargin) / screenWidth).clamp(0.6, 1.0);
 
-    final fractionChanged = (newViewportFraction - _viewportFraction).abs() > 0.001;
+    final fractionChanged =
+        (newViewportFraction - _viewportFraction).abs() > 0.001;
     final widthChanged = (newCardWidth - _cardWidth).abs() > 0.5;
     if (fractionChanged || widthChanged) {
       final oldPage = _currentPage;
       _viewportFraction = newViewportFraction;
       _cardWidth = newCardWidth;
       final oldController = _pageController;
-      _pageController = PageController(initialPage: oldPage, viewportFraction: _viewportFraction);
+      _pageController = PageController(
+        initialPage: oldPage,
+        viewportFraction: _viewportFraction,
+      );
       // Dispose old controller to avoid leaks
       oldController.dispose();
       // No need to call setState here; rebuild will happen naturally
@@ -135,7 +145,7 @@ class _CustomCarouselFB2State extends State<CustomCarouselFB2> {
           width: isActive ? 24 : 8,
           height: 8,
           decoration: BoxDecoration(
-            color: isActive 
+            color: isActive
                 ? const Color(0xFF123CBE)
                 : const Color(0xFF123CBE).withOpacity(0.3),
             borderRadius: BorderRadius.circular(4),
@@ -157,13 +167,19 @@ class _CarouselCard extends StatefulWidget {
   final double cardWidth;
   final VoidCallback? onNavigateToMap;
   final ValueChanged<String>? onLocate;
-  const _CarouselCard({required this.item, required this.cardWidth, this.onNavigateToMap, this.onLocate});
+  const _CarouselCard({
+    required this.item,
+    required this.cardWidth,
+    this.onNavigateToMap,
+    this.onLocate,
+  });
 
   @override
   State<_CarouselCard> createState() => _CarouselCardState();
 }
 
-class _CarouselCardState extends State<_CarouselCard> with AutomaticKeepAliveClientMixin {
+class _CarouselCardState extends State<_CarouselCard>
+    with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
 
@@ -175,7 +191,7 @@ class _CarouselCardState extends State<_CarouselCard> with AutomaticKeepAliveCli
     final cacheWidthPx = (widget.cardWidth * dpr).round();
     return Container(
       width: widget.cardWidth, // Ensure portrait aspect (taller than wide)
-  height: 300,
+      height: 300,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12.5),
         boxShadow: isDark
@@ -233,9 +249,7 @@ class _CarouselCardState extends State<_CarouselCard> with AutomaticKeepAliveCli
             ),
             // Dark overlay
             Container(
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.35),
-              ),
+              decoration: BoxDecoration(color: Colors.black.withOpacity(0.35)),
             ),
             // Content on top
             Padding(
@@ -266,10 +280,10 @@ class _CarouselCardState extends State<_CarouselCard> with AutomaticKeepAliveCli
                       onPressed: () {
                         String? target;
                         switch (widget.item.name) {
-                          case 'Gym & Fitness':
+                          case 'Gym Building':
                             target = 'gym_top_right';
                             break;
-                          case 'Campus Café':
+                          case 'Cafeteria':
                             target = 'building_c';
                             break;
                           case 'Library':
@@ -295,16 +309,7 @@ class _CarouselCardState extends State<_CarouselCard> with AutomaticKeepAliveCli
 
 // Simple, easy-to-edit in-file data for the carousel.
 const List<_CarouselItem> _kCarouselItems = <_CarouselItem>[
-  _CarouselItem(
-    image: 'assets/images/home_cafe.jpg',
-    name: 'Campus Café',
-  ),
-  _CarouselItem(
-    image: 'assets/images/home_gym.jpg',
-    name: 'Gym & Fitness',
-  ),
-  _CarouselItem(
-    image: 'assets/images/home_library.jpg',
-    name: 'Library',
-  ),
+  _CarouselItem(image: 'assets/images/home/home_cafe.jpg', name: 'Cafeteria'),
+  _CarouselItem(image: 'assets/images/home/home_gym.jpg', name: 'Gym Building'),
+  _CarouselItem(image: 'assets/images/home/home_library.jpg', name: 'Library'),
 ];

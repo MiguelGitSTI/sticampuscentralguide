@@ -1,0 +1,28 @@
+{
+  "map_line": [
+    {
+      "line": "Hey there, explorer. Tap any building to check details."
+    },
+    {
+      "line": "Need directions? Pick a building and hit Navigate."
+    },
+    {
+      "line": "The map zoom is your friend. Pinch in and out anytime."
+    },
+    {
+      "line": "I can only show two bubbles at once. Keep tapping me."
+    },
+    {
+      "line": "Building cards open above the map when you choose an action."
+    },
+    {
+      "line": "If a route image exists, you will see it in Navigate view."
+    },
+    {
+      "line": "Try selecting another building to compare locations quickly."
+    },
+    {
+      "line": "I am here whenever you need a campus map hint."
+    }
+  ]
+}

@@ -7,7 +7,7 @@ class TopButtons extends StatelessWidget {
   final VoidCallback onFaqTap;
   final VoidCallback onNotificationTap;
   final GlobalKey<NotificationButtonWithBadgeState>? notificationButtonKey;
-  
+
   const TopButtons({
     super.key,
     required this.onFaqTap,
@@ -21,10 +21,7 @@ class TopButtons extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         // FAQ Button
-        _TopButton(
-          icon: Icons.help_outline_rounded,
-          onTap: onFaqTap,
-        ),
+        _TopButton(icon: Icons.help_outline_rounded, onTap: onFaqTap),
         const SizedBox(width: 8),
         // Notification Button with badge
         NotificationButtonWithBadge(
@@ -40,16 +37,15 @@ class TopButtons extends StatelessWidget {
 class NotificationButtonWithBadge extends StatefulWidget {
   final VoidCallback onTap;
 
-  const NotificationButtonWithBadge({
-    super.key,
-    required this.onTap,
-  });
+  const NotificationButtonWithBadge({super.key, required this.onTap});
 
   @override
-  State<NotificationButtonWithBadge> createState() => NotificationButtonWithBadgeState();
+  State<NotificationButtonWithBadge> createState() =>
+      NotificationButtonWithBadgeState();
 }
 
-class NotificationButtonWithBadgeState extends State<NotificationButtonWithBadge>
+class NotificationButtonWithBadgeState
+    extends State<NotificationButtonWithBadge>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
@@ -68,20 +64,12 @@ class NotificationButtonWithBadgeState extends State<NotificationButtonWithBadge
       duration: const Duration(milliseconds: 200),
       vsync: this,
     );
-    _scaleAnimation = Tween<double>(
-      begin: 1.0,
-      end: 0.92,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    ));
-    _shadowAnimation = Tween<double>(
-      begin: 1.0,
-      end: 0.4,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    ));
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.92).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
+    _shadowAnimation = Tween<double>(begin: 1.0, end: 0.4).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
     _loadReadIds();
     _loadCachedCount();
     _notificationsStream = FirebaseFirestore.instance
@@ -158,7 +146,9 @@ class NotificationButtonWithBadgeState extends State<NotificationButtonWithBadge
         int unreadCount = _cachedNotificationCount; // Default to cached count
         if (snapshot.hasData) {
           final docs = snapshot.data!.docs;
-          unreadCount = docs.where((doc) => !_readNotificationIds.contains(doc.id)).length;
+          unreadCount = docs
+              .where((doc) => !_readNotificationIds.contains(doc.id))
+              .length;
           // Update cached count
           _cachedNotificationCount = unreadCount;
         }
@@ -189,21 +179,35 @@ class NotificationButtonWithBadgeState extends State<NotificationButtonWithBadge
                             width: buttonSize,
                             height: buttonSize,
                             decoration: BoxDecoration(
-                              color: isDark ? cs.surfaceContainerHighest : cs.surface,
+                              color: isDark
+                                  ? cs.surfaceContainerHighest
+                                  : cs.surface,
                               borderRadius: BorderRadius.circular(12),
                               boxShadow: isDark
                                   ? [
                                       BoxShadow(
-                                        color: const Color(0xCC000000).withOpacity(0.7 * _shadowAnimation.value),
+                                        color: const Color(0xCC000000)
+                                            .withOpacity(
+                                              0.7 * _shadowAnimation.value,
+                                            ),
                                         blurRadius: 4 * _shadowAnimation.value,
                                         spreadRadius: 0,
-                                        offset: Offset(0, 2 * _shadowAnimation.value),
+                                        offset: Offset(
+                                          0,
+                                          2 * _shadowAnimation.value,
+                                        ),
                                       ),
                                       BoxShadow(
-                                        color: const Color(0x66000000).withOpacity(0.6 * _shadowAnimation.value),
+                                        color: const Color(0x66000000)
+                                            .withOpacity(
+                                              0.6 * _shadowAnimation.value,
+                                            ),
                                         blurRadius: 2 * _shadowAnimation.value,
                                         spreadRadius: 0,
-                                        offset: Offset(0, 1 * _shadowAnimation.value),
+                                        offset: Offset(
+                                          0,
+                                          1 * _shadowAnimation.value,
+                                        ),
                                       ),
                                     ]
                                   : [
@@ -211,19 +215,25 @@ class NotificationButtonWithBadgeState extends State<NotificationButtonWithBadge
                                         color: const Color(0x18000000),
                                         blurRadius: 4 * _shadowAnimation.value,
                                         spreadRadius: 0,
-                                        offset: Offset(0, 2 * _shadowAnimation.value),
+                                        offset: Offset(
+                                          0,
+                                          2 * _shadowAnimation.value,
+                                        ),
                                       ),
                                       BoxShadow(
                                         color: const Color(0x12000000),
                                         blurRadius: 2 * _shadowAnimation.value,
                                         spreadRadius: 0,
-                                        offset: Offset(0, 1 * _shadowAnimation.value),
+                                        offset: Offset(
+                                          0,
+                                          1 * _shadowAnimation.value,
+                                        ),
                                       ),
                                     ],
                             ),
                             child: Icon(
                               Icons.notifications_outlined,
-                              color: const Color(0xFF123CBE),
+                              color: const Color(0xFFFFB206),
                               size: (22 * sw).clamp(18, 28).toDouble(),
                             ),
                           ),
@@ -234,8 +244,14 @@ class NotificationButtonWithBadgeState extends State<NotificationButtonWithBadge
                             right: 0,
                             top: 0,
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                              constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 5,
+                                vertical: 2,
+                              ),
+                              constraints: const BoxConstraints(
+                                minWidth: 18,
+                                minHeight: 18,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.red,
                                 borderRadius: BorderRadius.circular(10),
@@ -253,7 +269,9 @@ class NotificationButtonWithBadgeState extends State<NotificationButtonWithBadge
                               ),
                               child: Center(
                                 child: Text(
-                                  unreadCount > 99 ? '99+' : unreadCount.toString(),
+                                  unreadCount > 99
+                                      ? '99+'
+                                      : unreadCount.toString(),
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 10,
@@ -280,11 +298,8 @@ class NotificationButtonWithBadgeState extends State<NotificationButtonWithBadge
 class _TopButton extends StatefulWidget {
   final IconData icon;
   final VoidCallback onTap;
-  
-  const _TopButton({
-    required this.icon,
-    required this.onTap,
-  });
+
+  const _TopButton({required this.icon, required this.onTap});
 
   @override
   State<_TopButton> createState() => _TopButtonState();
@@ -303,20 +318,12 @@ class _TopButtonState extends State<_TopButton>
       duration: const Duration(milliseconds: 200), // Slower animation
       vsync: this,
     );
-    _scaleAnimation = Tween<double>(
-      begin: 1.0,
-      end: 0.92,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    ));
-    _shadowAnimation = Tween<double>(
-      begin: 1.0,
-      end: 0.4,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    ));
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.92).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
+    _shadowAnimation = Tween<double>(begin: 1.0, end: 0.4).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
   }
 
   @override
@@ -366,13 +373,17 @@ class _TopButtonState extends State<_TopButton>
                   boxShadow: isDark
                       ? [
                           BoxShadow(
-                            color: const Color(0xCC000000).withOpacity(0.7 * _shadowAnimation.value),
+                            color: const Color(
+                              0xCC000000,
+                            ).withOpacity(0.7 * _shadowAnimation.value),
                             blurRadius: 4 * _shadowAnimation.value,
                             spreadRadius: 0,
                             offset: Offset(0, 2 * _shadowAnimation.value),
                           ),
                           BoxShadow(
-                            color: const Color(0x66000000).withOpacity(0.6 * _shadowAnimation.value),
+                            color: const Color(
+                              0x66000000,
+                            ).withOpacity(0.6 * _shadowAnimation.value),
                             blurRadius: 2 * _shadowAnimation.value,
                             spreadRadius: 0,
                             offset: Offset(0, 1 * _shadowAnimation.value),
@@ -395,7 +406,7 @@ class _TopButtonState extends State<_TopButton>
                 ),
                 child: Icon(
                   widget.icon,
-                  color: const Color(0xFF123CBE), // Navy blue
+                  color: const Color(0xFFFFB206),
                   size: (22 * sw).clamp(18, 28).toDouble(),
                 ),
               ),

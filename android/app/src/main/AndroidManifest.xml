@@ -17,7 +17,7 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     
     <application
-        android:label="STI Campus Central Guide"
+        android:label="STI CCG"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

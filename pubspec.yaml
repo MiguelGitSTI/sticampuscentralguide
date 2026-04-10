@@ -83,11 +83,21 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/images/
+    - assets/images/app/
+    - assets/images/home/
+    - assets/images/STI Pics/
+    - assets/images/map/background/
+    - assets/images/map/base/
+    - assets/images/map/buildings/
+    - assets/images/map/navigation/
+    - assets/images/map/tiger/
+    - assets/images/map/descriptions/
     - assets/data/schedules/
     - assets/data/announcement_items.json
     - assets/data/events.json
     - assets/data/faq.json
     - assets/data/class_schedule.json
+    - assets/data/tiger_lines.json
     - assets/data/alert.json
 
   # An image asset can refer to one or more resolution-specific "variants", see
@@ -120,6 +130,6 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/images/app_icon.png"
+  image_path: "assets/images/app/app_icon.png"
   adaptive_icon_background: "#FFFFFF"
-  adaptive_icon_foreground: "assets/images/app_icon.png"
+  adaptive_icon_foreground: "assets/images/app/app_icon.png"
