@@ -233,7 +233,9 @@ class NotificationButtonWithBadgeState
                             ),
                             child: Icon(
                               Icons.notifications_outlined,
-                              color: const Color(0xFFFFB206),
+                              color: isDark
+                                  ? const Color(0xFFFFB206)
+                                  : const Color(0xFF123CBE),
                               size: (22 * sw).clamp(18, 28).toDouble(),
                             ),
                           ),
@@ -406,7 +408,9 @@ class _TopButtonState extends State<_TopButton>
                 ),
                 child: Icon(
                   widget.icon,
-                  color: const Color(0xFFFFB206),
+                  color: isDark
+                      ? const Color(0xFFFFB206)
+                      : const Color(0xFF123CBE),
                   size: (22 * sw).clamp(18, 28).toDouble(),
                 ),
               ),

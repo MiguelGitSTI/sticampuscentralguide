@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:sticampuscentralguide/Screens/home_screen.dart';
 
 /// Custom clipper that reveals content from bottom to top based on progress (0.0 to 1.0)
 class _ProgressClipPath extends CustomClipper<Rect> {
@@ -29,9 +28,11 @@ class _ProgressClipPath extends CustomClipper<Rect> {
 /// - Navy background
 /// - icon_zero (greyscale) bounces in
 /// - icon_complete fills from bottom to top as progress
-/// - Screen fades out and navigates to Home
+/// - Screen fades out and notifies parent via callback
 class LoadingScreen extends StatefulWidget {
-  const LoadingScreen({super.key});
+  final VoidCallback? onFinished;
+
+  const LoadingScreen({super.key, this.onFinished});
 
   @override
   State<LoadingScreen> createState() => _LoadingScreenState();
@@ -49,6 +50,7 @@ class _LoadingScreenState extends State<LoadingScreen>
 
   Timer? _progressTimer;
   Timer? _failsafeTimer;
+  bool _finishNotified = false;
 
   // Assets
   static const String _iconComplete = 'assets/images/app/icon_complete.webp';
@@ -71,7 +73,7 @@ class _LoadingScreenState extends State<LoadingScreen>
     // Failsafe: automatically timeout after 5 seconds
     _failsafeTimer = Timer(const Duration(seconds: 5), () {
       if (mounted) {
-        setState(() => _animationState = 3);
+        _finishSplash();
       }
     });
 
@@ -124,7 +126,7 @@ class _LoadingScreenState extends State<LoadingScreen>
           // Fill complete, wait a bit then fade
           Future.delayed(const Duration(milliseconds: 300), () {
             if (mounted) {
-              setState(() => _animationState = 3);
+              _finishSplash();
             }
           });
         }
@@ -134,6 +136,20 @@ class _LoadingScreenState extends State<LoadingScreen>
         _progress = steps[currentStep];
       });
       currentStep++;
+    });
+  }
+
+  void _finishSplash() {
+    if (_finishNotified) return;
+    _finishNotified = true;
+
+    if (mounted && _animationState < 3) {
+      setState(() => _animationState = 3);
+    }
+
+    Future.delayed(const Duration(milliseconds: 400), () {
+      if (!mounted) return;
+      widget.onFinished?.call();
     });
   }
 
@@ -153,17 +169,6 @@ class _LoadingScreenState extends State<LoadingScreen>
 
     // Fade alpha
     final fadeAlpha = _animationState >= 3 ? 0.0 : 1.0;
-
-    // Navigate when fade completes
-    if (_animationState >= 3 && fadeAlpha == 0.0) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const HomeScreen()),
-          );
-        }
-      });
-    }
 
     return AnimatedOpacity(
       opacity: fadeAlpha,

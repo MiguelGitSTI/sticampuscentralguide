@@ -38,19 +38,23 @@ class _TodoListState extends State<TodoList> {
 
   Future<void> _saveTodos() async {
     final prefs = await SharedPreferences.getInstance();
-    final String encoded = json.encode(_todos.map((item) => item.toJson()).toList());
+    final String encoded = json.encode(
+      _todos.map((item) => item.toJson()).toList(),
+    );
     await prefs.setString('todos', encoded);
   }
 
   void _addTodo() {
     if (_textController.text.trim().isEmpty) return;
-    
+
     setState(() {
-      _todos.add(TodoItem(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        text: _textController.text.trim(),
-        isCompleted: false,
-      ));
+      _todos.add(
+        TodoItem(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          text: _textController.text.trim(),
+          isCompleted: false,
+        ),
+      );
       _textController.clear();
     });
     _saveTodos();
@@ -77,6 +81,12 @@ class _TodoListState extends State<TodoList> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accentColor = isDark
+        ? const Color(0xFFFFB206)
+        : const Color(0xFF123CBE);
+    final checkmarkColor = isDark
+        ? const Color(0xFF123CBE)
+        : const Color(0xFFFFB206);
 
     return Container(
       decoration: BoxDecoration(
@@ -127,7 +137,9 @@ class _TodoListState extends State<TodoList> {
                     controller: _textController,
                     decoration: InputDecoration(
                       hintText: 'Add a new task...',
-                      hintStyle: TextStyle(color: cs.onSurface.withOpacity(0.5)),
+                      hintStyle: TextStyle(
+                        color: cs.onSurface.withOpacity(0.5),
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide(color: cs.outlineVariant),
@@ -138,9 +150,12 @@ class _TodoListState extends State<TodoList> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFF123CBE), width: 2),
+                        borderSide: BorderSide(color: accentColor, width: 2),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                     ),
                     style: TextStyle(color: cs.onSurface),
                     onSubmitted: (_) => _addTodo(),
@@ -149,7 +164,7 @@ class _TodoListState extends State<TodoList> {
                 const SizedBox(width: 8),
                 IconButton(
                   onPressed: _addTodo,
-                  icon: const Icon(Icons.add_circle, color: Color(0xFF123CBE)),
+                  icon: Icon(Icons.add_circle, color: accentColor),
                   iconSize: 32,
                 ),
               ],
@@ -190,7 +205,10 @@ class _TodoListState extends State<TodoList> {
                         child: const Icon(Icons.delete, color: Colors.white),
                       ),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16.0,
+                          vertical: 4.0,
+                        ),
                         child: Container(
                           decoration: BoxDecoration(
                             color: cs.surfaceVariant,
@@ -200,8 +218,8 @@ class _TodoListState extends State<TodoList> {
                             leading: Checkbox(
                               value: todo.isCompleted,
                               onChanged: (_) => _toggleTodo(todo.id),
-                              activeColor: const Color(0xFF123CBE),
-                              checkColor: const Color(0xFFFFB206),
+                              activeColor: accentColor,
+                              checkColor: checkmarkColor,
                             ),
                             title: Text(
                               todo.text,
@@ -215,7 +233,10 @@ class _TodoListState extends State<TodoList> {
                               ),
                             ),
                             trailing: IconButton(
-                              icon: Icon(Icons.delete_outline, color: cs.onSurface.withOpacity(0.6)),
+                              icon: Icon(
+                                Icons.delete_outline,
+                                color: cs.onSurface.withOpacity(0.6),
+                              ),
                               onPressed: () => _deleteTodo(todo.id),
                             ),
                           ),
@@ -236,21 +257,17 @@ class TodoItem {
   final String text;
   bool isCompleted;
 
-  TodoItem({
-    required this.id,
-    required this.text,
-    required this.isCompleted,
-  });
+  TodoItem({required this.id, required this.text, required this.isCompleted});
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'text': text,
-        'isCompleted': isCompleted,
-      };
+    'id': id,
+    'text': text,
+    'isCompleted': isCompleted,
+  };
 
   factory TodoItem.fromJson(Map<String, dynamic> json) => TodoItem(
-        id: json['id'],
-        text: json['text'],
-        isCompleted: json['isCompleted'],
-      );
+    id: json['id'],
+    text: json['text'],
+    isCompleted: json['isCompleted'],
+  );
 }

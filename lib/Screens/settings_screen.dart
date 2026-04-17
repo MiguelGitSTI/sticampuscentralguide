@@ -495,9 +495,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.dark_mode_outlined,
-                      color: Color(0xFFFFB206),
+                      color: themeProvider.isDarkMode
+                          ? const Color(0xFFFFB206)
+                          : const Color(0xFF123CBE),
                       size: 24,
                     ),
                     const SizedBox(width: 16),

@@ -70,8 +70,10 @@ class _EventCalendarState extends State<EventCalendar> {
     String timeDisplay;
     final startTime = d['startTime'] as String?;
     final endTime = d['endTime'] as String?;
-    if (startTime != null && startTime.isNotEmpty &&
-        endTime != null && endTime.isNotEmpty) {
+    if (startTime != null &&
+        startTime.isNotEmpty &&
+        endTime != null &&
+        endTime.isNotEmpty) {
       timeDisplay = '$startTime – $endTime';
     } else {
       timeDisplay = d['time'] as String? ?? '';
@@ -88,7 +90,8 @@ class _EventCalendarState extends State<EventCalendar> {
   }
 
   List<_CalendarEvent> _parseFirestoreEvents(
-      List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) {
     // Also cache them
     final raw = docs.map((doc) {
       final d = doc.data();
@@ -129,8 +132,10 @@ class _EventCalendarState extends State<EventCalendar> {
       String timeDisplay;
       final startTime = d['startTime'] as String?;
       final endTime = d['endTime'] as String?;
-      if (startTime != null && startTime.isNotEmpty &&
-          endTime != null && endTime.isNotEmpty) {
+      if (startTime != null &&
+          startTime.isNotEmpty &&
+          endTime != null &&
+          endTime.isNotEmpty) {
         timeDisplay = '$startTime – $endTime';
       } else {
         timeDisplay = d['time'] as String? ?? '';
@@ -154,7 +159,11 @@ class _EventCalendarState extends State<EventCalendar> {
     for (final e in events) {
       final startKey = DateTime(e.date.year, e.date.month, e.date.day);
       if (e.endDate != null) {
-        final endKey = DateTime(e.endDate!.year, e.endDate!.month, e.endDate!.day);
+        final endKey = DateTime(
+          e.endDate!.year,
+          e.endDate!.month,
+          e.endDate!.day,
+        );
         var current = startKey;
         while (!current.isAfter(endKey)) {
           map.putIfAbsent(current, () => []).add(e);
@@ -168,7 +177,9 @@ class _EventCalendarState extends State<EventCalendar> {
   }
 
   List<_CalendarEvent> _getEventsForDay(
-      DateTime day, Map<DateTime, List<_CalendarEvent>> grouped) {
+    DateTime day,
+    Map<DateTime, List<_CalendarEvent>> grouped,
+  ) {
     final key = DateTime(day.year, day.month, day.day);
     return grouped[key] ?? [];
   }
@@ -208,6 +219,10 @@ class _EventCalendarState extends State<EventCalendar> {
   ) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accentColor = isDark
+        ? const Color(0xFFFFB206)
+        : const Color(0xFF123CBE);
+    final onAccentColor = isDark ? const Color(0xFF123CBE) : Colors.white;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -258,24 +273,28 @@ class _EventCalendarState extends State<EventCalendar> {
               },
               calendarStyle: CalendarStyle(
                 todayDecoration: BoxDecoration(
-                  color: const Color(0xFF123CBE).withOpacity(0.3),
+                  color: accentColor.withOpacity(isDark ? 0.38 : 0.3),
                   shape: BoxShape.circle,
                 ),
                 todayTextStyle: TextStyle(
                   color: cs.onSurface,
                   fontWeight: FontWeight.w600,
                 ),
-                selectedDecoration: const BoxDecoration(
-                  color: Color(0xFF123CBE),
+                selectedDecoration: BoxDecoration(
+                  color: accentColor,
                   shape: BoxShape.circle,
                 ),
-                selectedTextStyle: const TextStyle(
-                  color: Colors.white,
+                selectedTextStyle: TextStyle(
+                  color: onAccentColor,
                   fontWeight: FontWeight.w600,
                 ),
                 defaultTextStyle: TextStyle(color: cs.onSurface),
-                weekendTextStyle: TextStyle(color: cs.onSurface.withOpacity(0.7)),
-                outsideTextStyle: TextStyle(color: cs.onSurface.withOpacity(0.3)),
+                weekendTextStyle: TextStyle(
+                  color: cs.onSurface.withOpacity(0.7),
+                ),
+                outsideTextStyle: TextStyle(
+                  color: cs.onSurface.withOpacity(0.3),
+                ),
                 markerDecoration: const BoxDecoration(
                   color: Color(0xFFFFB206),
                   shape: BoxShape.circle,
@@ -289,11 +308,11 @@ class _EventCalendarState extends State<EventCalendar> {
                 formatButtonShowsNext: false,
                 titleCentered: true,
                 formatButtonDecoration: BoxDecoration(
-                  border: Border.all(color: const Color(0xFF123CBE)),
+                  border: Border.all(color: accentColor),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                formatButtonTextStyle: const TextStyle(
-                  color: Color(0xFF123CBE),
+                formatButtonTextStyle: TextStyle(
+                  color: accentColor,
                   fontSize: 12,
                 ),
                 titleTextStyle: TextStyle(
@@ -301,10 +320,7 @@ class _EventCalendarState extends State<EventCalendar> {
                   fontWeight: FontWeight.w600,
                   color: cs.onSurface,
                 ),
-                leftChevronIcon: Icon(
-                  Icons.chevron_left,
-                  color: cs.onSurface,
-                ),
+                leftChevronIcon: Icon(Icons.chevron_left, color: cs.onSurface),
                 rightChevronIcon: Icon(
                   Icons.chevron_right,
                   color: cs.onSurface,
@@ -360,8 +376,18 @@ class _EventCalendarState extends State<EventCalendar> {
 
   String _formatDayHeader(DateTime day) {
     final months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December',
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
     return '${months[day.month - 1]} ${day.day}, ${day.year}';
   }
@@ -375,12 +401,24 @@ class _EventTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accentColor = isDark
+        ? const Color(0xFFFFB206)
+        : const Color(0xFF123CBE);
+    final onAccentColor = isDark ? const Color(0xFF123CBE) : Colors.white;
     final now = DateTime.now();
     final todayKey = DateTime(now.year, now.month, now.day);
     // "Today" if today falls within the event's date range
-    final startKey = DateTime(event.date.year, event.date.month, event.date.day);
+    final startKey = DateTime(
+      event.date.year,
+      event.date.month,
+      event.date.day,
+    );
     final endKey = event.endDate != null
-        ? DateTime(event.endDate!.year, event.endDate!.month, event.endDate!.day)
+        ? DateTime(
+            event.endDate!.year,
+            event.endDate!.month,
+            event.endDate!.day,
+          )
         : startKey;
     final isToday = !todayKey.isBefore(startKey) && !todayKey.isAfter(endKey);
     final isMultiDay = event.endDate != null;
@@ -390,7 +428,7 @@ class _EventTile extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: isToday
-            ? const Color(0xFF123CBE)
+            ? accentColor
             : (isDark ? cs.surfaceContainerHighest : cs.surface),
         borderRadius: BorderRadius.circular(12),
         boxShadow: isDark
@@ -420,19 +458,21 @@ class _EventTile extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: isToday ? Colors.white : cs.onSurface,
+                    color: isToday ? onAccentColor : cs.onSurface,
                   ),
                 ),
               ),
               if (isMultiDay)
                 Container(
                   margin: const EdgeInsets.only(right: 4),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: isToday
-                        ? Colors.white.withOpacity(0.2)
-                        : const Color(0xFF123CBE).withOpacity(0.15),
+                        ? onAccentColor.withOpacity(0.18)
+                        : accentColor.withOpacity(isDark ? 0.22 : 0.15),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
@@ -440,24 +480,32 @@ class _EventTile extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 9,
                       fontWeight: FontWeight.w600,
-                      color: isToday ? Colors.white70 : const Color(0xFF123CBE),
+                      color: isToday
+                          ? onAccentColor.withOpacity(0.9)
+                          : accentColor,
                     ),
                   ),
                 ),
               if (isToday)
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFB206),
+                    color: isDark
+                        ? const Color(0xFF123CBE)
+                        : const Color(0xFFFFB206),
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: const Text(
+                  child: Text(
                     'TODAY',
                     style: TextStyle(
                       fontSize: 9,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF123CBE),
+                      color: isDark
+                          ? const Color(0xFFFFB206)
+                          : const Color(0xFF123CBE),
                     ),
                   ),
                 ),
@@ -466,25 +514,31 @@ class _EventTile extends StatelessWidget {
           const SizedBox(height: 6),
           Row(
             children: [
-              Icon(Icons.access_time, size: 13,
-                  color: isToday
-                      ? Colors.white70
-                      : cs.onSurface.withOpacity(0.6)),
+              Icon(
+                Icons.access_time,
+                size: 13,
+                color: isToday
+                    ? onAccentColor.withOpacity(0.9)
+                    : cs.onSurface.withOpacity(0.6),
+              ),
               const SizedBox(width: 4),
               Text(
                 event.time,
                 style: TextStyle(
                   fontSize: 13,
                   color: isToday
-                      ? Colors.white70
+                      ? onAccentColor.withOpacity(0.9)
                       : cs.onSurface.withOpacity(0.6),
                 ),
               ),
               const SizedBox(width: 12),
-              Icon(Icons.location_on_outlined, size: 13,
-                  color: isToday
-                      ? Colors.white70
-                      : cs.onSurface.withOpacity(0.6)),
+              Icon(
+                Icons.location_on_outlined,
+                size: 13,
+                color: isToday
+                    ? onAccentColor.withOpacity(0.9)
+                    : cs.onSurface.withOpacity(0.6),
+              ),
               const SizedBox(width: 4),
               Expanded(
                 child: Text(
@@ -492,7 +546,7 @@ class _EventTile extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 13,
                     color: isToday
-                        ? Colors.white70
+                        ? onAccentColor.withOpacity(0.9)
                         : cs.onSurface.withOpacity(0.6),
                   ),
                   overflow: TextOverflow.ellipsis,

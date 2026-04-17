@@ -173,34 +173,39 @@ class _HomeTabState extends State<_HomeTab> {
     return Container(
       child: Stack(
         children: [
-          if (!isDark)
-            Positioned.fill(
-              child: IndexedStack(
-                index: 0,
-                children: [
-                  Builder(
-                    builder: (context) {
-                      const double zoom = 1.65; // really zoomed in
-                      final int targetWidthPx =
-                          (media.size.width * media.devicePixelRatio * zoom)
-                              .round();
-                      // Cap decode size for memory safety
-                      final int cappedWidthPx = math.min(targetWidthPx, 4096);
-                      return Transform.scale(
-                        scale: zoom,
-                        alignment: Alignment.topRight,
+          Positioned.fill(
+            child: IndexedStack(
+              index: 0,
+              children: [
+                Builder(
+                  builder: (context) {
+                    const double zoom = 1.65; // really zoomed in
+                    final int targetWidthPx =
+                        (media.size.width * media.devicePixelRatio * zoom)
+                            .round();
+                    // Cap decode size for memory safety
+                    final int cappedWidthPx = math.min(targetWidthPx, 4096);
+                    final String backgroundAsset = isDark
+                        ? 'assets/images/home/home_background-dark.png'
+                        : 'assets/images/home/home_background.webp';
+                    return Transform.scale(
+                      scale: zoom,
+                      alignment: Alignment.topRight,
+                      child: Opacity(
+                        opacity: isDark ? 0.4 : 1.0,
                         child: Image.asset(
-                          'assets/images/home/home_background.webp',
+                          backgroundAsset,
                           fit: BoxFit.cover,
                           alignment: Alignment.topRight,
                           cacheWidth: cappedWidthPx,
                         ),
-                      );
-                    },
-                  ),
-                ],
-              ),
+                      ),
+                    );
+                  },
+                ),
+              ],
             ),
+          ),
           // Bottom fade for light mode only
           if (!isDark)
             Positioned.fill(

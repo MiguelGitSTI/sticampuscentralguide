@@ -12,6 +12,20 @@ import '../Items/building_special.dart';
 import '../theme/theme_provider.dart';
 // Local soft-shadow helper to avoid extra imports in this screen.
 
+const Size _kPhoneBaselineLogicalSize = Size(407.0, 904.0);
+
+double _phoneUiScaleForContext(BuildContext context) {
+  final size = MediaQuery.sizeOf(context);
+
+  // This screen is tuned for phones; keep tablets at neutral scale.
+  if (size.shortestSide >= 600) return 1.0;
+
+  final widthScale = size.width / _kPhoneBaselineLogicalSize.width;
+  final heightScale = size.height / _kPhoneBaselineLogicalSize.height;
+  final blendedScale = (widthScale + heightScale) / 2.0;
+  return blendedScale.clamp(0.85, 1.20);
+}
+
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
 
@@ -58,12 +72,12 @@ class _MapScreenState extends State<MapScreen>
   // Tiger tuning: info/navigation mode (overlay open).
   static const double _tigerOverlayViewportX = 1.0;
   static const double _tigerOverlayViewportY = 1.0;
-  static const double _tigerOverlayViewportXOffset = 100.0;
-  static const double _tigerOverlayViewportYOffset = 0.0;
+  static const double _tigerOverlayViewportXOffset = 0.0;
+  static const double _tigerOverlayViewportYOffset = 50.0;
 
   // Tiger size tuning.
   static const double _tigerSize = 256.0;
-  static const double _tigerOverlayScale = 1.24;
+  static const double _tigerOverlayScale = 2.0;
   static const double _tigerHeightFactor = 0.20;
 
   // Chat bubble tuning: map mode.
@@ -77,8 +91,8 @@ class _MapScreenState extends State<MapScreen>
   static const double _tigerBubbleWidthFactorOverlay = 0.68;
   static const double _tigerBubbleMinWidthOverlay = 220.0;
   static const double _tigerBubbleMaxWidthOverlay = 220.0;
-  static const double _tigerBubbleXOffsetOverlay = 60.0;
-  static const double _tigerBubbleYOffsetOverlay = 60.0;
+  static const double _tigerBubbleXOffsetOverlay = 0.0;
+  static const double _tigerBubbleYOffsetOverlay = -50.0;
 
   // Shared bubble animation tuning.
   static const double _tigerBubbleOldXShift = 0.0;
@@ -158,6 +172,7 @@ class _MapScreenState extends State<MapScreen>
   Timer? _mapAutoLineTimer;
   Timer? _infoAutoPlaybackTimer;
   Timer? _infoAutoResumeTimer;
+  Timer? _tigerAutoResumeTimer;
   late final PageController _infoImagePageController;
   String _activeTigerAsset = _tigerIdleAsset;
 
@@ -504,12 +519,21 @@ class _MapScreenState extends State<MapScreen>
   }
 
   void _onTigerTap() {
+    _stopMapAutoLineLoop();
+    _tigerAutoResumeTimer?.cancel();
+
     final lines = _resolveTigerLines();
     if (lines.isEmpty) return;
 
     final line = lines[_nextTigerLineIndex % lines.length];
     _nextTigerLineIndex = (_nextTigerLineIndex + 1) % lines.length;
     _emitTigerLine(line);
+
+    _tigerAutoResumeTimer = Timer(const Duration(seconds: 5), () {
+      if (mounted && !_cardVisible) {
+        _startMapAutoLineLoop();
+      }
+    });
   }
 
   List<String> _resolveTigerLines() {
@@ -621,6 +645,14 @@ class _MapScreenState extends State<MapScreen>
     _startMapAutoLineLoop();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    precacheImage(const AssetImage(_tigerIdleAsset), context);
+    precacheImage(const AssetImage(_tigerTalkingAsset), context);
+    precacheImage(const AssetImage(_tigerExcitedTalkingAsset), context);
+  }
+
   void _onZoomTick() {
     final begin = _zoomBegin;
     final end = _zoomEnd;
@@ -659,6 +691,7 @@ class _MapScreenState extends State<MapScreen>
     _stopInfoAutoPlayback();
     _stopMapAutoLineLoop();
     _tigerTalkTimer?.cancel();
+    _tigerAutoResumeTimer?.cancel();
     _zoomBegin = null;
     _zoomEnd = null;
     _infoImagePageController.dispose();
@@ -669,10 +702,15 @@ class _MapScreenState extends State<MapScreen>
 
   @override
   Widget build(BuildContext context) {
+    final uiScale = _phoneUiScaleForContext(context);
+    double s(double value) => value * uiScale;
     final cs = Theme.of(context).colorScheme;
-    final overlayTopPadding = kToolbarHeight + 8;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final overlayTopPadding = kToolbarHeight + s(8);
     final activeBuildingId = _activeBuildingId;
     final shouldDimMap = _cardVisible && activeBuildingId != null;
+    final keepSelectedInBaseZ =
+        !shouldDimMap && activeBuildingId == 'gym_top_right';
     final showActionBar = activeBuildingId != null && !_cardVisible;
     final showCenteredNavigation =
         shouldDimMap &&
@@ -705,23 +743,31 @@ class _MapScreenState extends State<MapScreen>
           child: Stack(
             children: [
               Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: EdgeInsets.all(s(16)),
                 child: Container(
                   decoration: BoxDecoration(
                     // Map viewport background image
-                    image: const DecorationImage(
+                    image: DecorationImage(
                       image: AssetImage(
-                        'assets/images/map/background/map_map_background.webp',
+                        isDark
+                            ? 'assets/images/map/background/map_map_background-dark.webp'
+                            : 'assets/images/map/background/map_map_background.webp',
                       ),
                       fit: BoxFit.cover,
                       filterQuality: FilterQuality.medium,
                     ),
                     color: Colors.black,
-                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isDark
+                          ? const Color(0xFFFFB206)
+                          : const Color(0xFF123CBE),
+                      width: s(2),
+                    ),
+                    borderRadius: BorderRadius.circular(s(16)),
                     boxShadow: _softShadow(context),
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(s(16)),
                     child: InteractiveViewer(
                       key: _viewerKey,
                       transformationController: _transformationController,
@@ -760,7 +806,9 @@ class _MapScreenState extends State<MapScreen>
                                 ),
                               ),
                             ..._buildings(
-                              excludeId: shouldDimMap ? null : activeBuildingId,
+                              excludeId: shouldDimMap || keepSelectedInBaseZ
+                                  ? null
+                                  : activeBuildingId,
                             ),
                             // Slight dim + blur on the whole map while building panel is open.
                             if (shouldDimMap)
@@ -782,7 +830,9 @@ class _MapScreenState extends State<MapScreen>
                                   ),
                                 ),
                               ),
-                            if (!shouldDimMap && activeBuildingId != null)
+                            if (!shouldDimMap &&
+                                activeBuildingId != null &&
+                                !keepSelectedInBaseZ)
                               ..._buildSelectedBuilding(activeBuildingId),
                           ],
                         ),
@@ -808,7 +858,7 @@ class _MapScreenState extends State<MapScreen>
               Align(
                 alignment: Alignment.bottomCenter,
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                  padding: EdgeInsets.fromLTRB(s(16), 0, s(16), s(24)),
                   child: AnimatedSwitcher(
                     duration: _actionBarTransitionDuration,
                     switchInCurve: _actionBarInCurve,
@@ -851,7 +901,7 @@ class _MapScreenState extends State<MapScreen>
                         child: Transform.translate(
                           offset: Offset(
                             0,
-                            (1.0 - eased) * _navigateOverlayEnterYOffset,
+                            (1.0 - eased) * s(_navigateOverlayEnterYOffset),
                           ),
                           child: Transform.scale(
                             scale: 0.96 + (0.04 * eased),
@@ -874,7 +924,12 @@ class _MapScreenState extends State<MapScreen>
                 Align(
                   alignment: Alignment.topCenter,
                   child: Padding(
-                    padding: EdgeInsets.fromLTRB(16, overlayTopPadding, 16, 0),
+                    padding: EdgeInsets.fromLTRB(
+                      s(16),
+                      overlayTopPadding,
+                      s(16),
+                      0,
+                    ),
                     child: _buildOverlayCard(activeBuildingId),
                   ),
                 ),
@@ -965,24 +1020,26 @@ class _MapScreenState extends State<MapScreen>
   Widget _buildOverlayCard(String buildingId) {
     final spec = kBuildingOverlays[buildingId];
     if (spec == null) return const SizedBox.shrink();
+    final uiScale = _phoneUiScaleForContext(context);
+    double s(double value) => value * uiScale;
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
     // Top-centered overlay card (above the map view)
     final media = MediaQuery.of(context).size;
     final maxW = media.width * 0.85;
-    final cardW = maxW.clamp(260.0, 420.0);
+    final cardW = maxW.clamp(s(260), s(420));
 
     final bodyText = _buildActionBodyText(spec);
 
     // Navigate view: show an outer card containing an inner pannable/zoomable image card.
     if (_activeAction == _OverlayAction.navigate &&
         _hasNavigationImages(buildingId)) {
-      final navMaxW = (media.width * 0.94).clamp(280.0, 720.0);
+      final navMaxW = (media.width * 0.94).clamp(s(280), s(720));
       return ConstrainedBox(
         constraints: BoxConstraints(maxWidth: navMaxW),
         child: Padding(
-          padding: const EdgeInsets.all(12.0),
+          padding: EdgeInsets.all(s(12)),
           child: _BuildingNavImages(buildingId: buildingId),
         ),
       );
@@ -995,15 +1052,15 @@ class _MapScreenState extends State<MapScreen>
         color: isDark
             ? cs.surfaceContainerHigh.withValues(alpha: 0.95)
             : Colors.white.withOpacity(0.96),
-        elevation: 12,
+        elevation: s(12),
         shadowColor: isDark
             ? Colors.black.withValues(alpha: 0.50)
             : Colors.black26,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(s(8)),
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: cardW),
           child: Padding(
-            padding: const EdgeInsets.all(12.0),
+            padding: EdgeInsets.all(s(12)),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1011,12 +1068,12 @@ class _MapScreenState extends State<MapScreen>
                 Text(
                   spec.title,
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: s(16),
                     fontWeight: FontWeight.w700,
                     color: isDark ? cs.onSurface : Colors.black87,
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: s(8)),
                 // Building images: info uses *_desc, navigate uses *_navigation
                 if (_activeAction == _OverlayAction.navigate)
                   _BuildingNavImages(buildingId: buildingId)
@@ -1032,7 +1089,7 @@ class _MapScreenState extends State<MapScreen>
                         child: Transform.translate(
                           offset: Offset(
                             0,
-                            (1.0 - eased) * _navigateOverlayEnterYOffset,
+                            (1.0 - eased) * s(_navigateOverlayEnterYOffset),
                           ),
                           child: Transform.scale(
                             scale: 0.96 + (0.04 * eased),
@@ -1051,12 +1108,12 @@ class _MapScreenState extends State<MapScreen>
                           _onInfoManualScrollStart(buildingId),
                     ),
                   ),
-                const SizedBox(height: 8),
+                SizedBox(height: s(8)),
                 if (bodyText.trim().isNotEmpty)
                   Text(
                     bodyText,
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: s(13),
                       color: isDark
                           ? cs.onSurface.withValues(alpha: 0.90)
                           : Colors.black87,
@@ -1072,6 +1129,8 @@ class _MapScreenState extends State<MapScreen>
 
   // Bottom button bar outside the map canvas
   Widget _buildBottomButtons(String buildingId) {
+    final uiScale = _phoneUiScaleForContext(context);
+    double s(double value) => value * uiScale;
     final canNavigate =
         _hasNavigationImages(buildingId) &&
         buildingId != 'cottage' &&
@@ -1094,41 +1153,48 @@ class _MapScreenState extends State<MapScreen>
       color: Colors.transparent,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final double containerHPad =
-              12; // matches Container horizontal padding
-          final double innerSpacing = 8; // spacing between buttons
-          final int count = buttons.length;
-          final double availableW =
-              constraints.maxWidth -
-              (2 * containerHPad) -
-              ((count - 1) * innerSpacing);
-          final double perBtnW = (availableW / count).clamp(92.0, 160.0);
+          // Fine-tunable widths
+          final desiredContainerWidth = (constraints.maxWidth * 0.85).clamp(
+            s(360),
+            s(460),
+          );
+          final containerWidth = min(
+            desiredContainerWidth.toDouble(),
+            constraints.maxWidth,
+          );
+          final innerSpacing = s(16);
+          final maxButtonWidth =
+              (containerWidth - innerSpacing * (buttons.length - 1)) /
+              buttons.length;
+          final buttonWidth = max(s(96), min(s(150), maxButtonWidth));
 
           return Stack(
             clipBehavior: Clip.none,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
+                width: containerWidth,
+                padding: EdgeInsets.symmetric(
+                  horizontal: s(12),
+                  vertical: s(12),
                 ),
                 decoration: BoxDecoration(
                   color: ThemeProvider.navyBlue.withOpacity(0.70),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(s(12)),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.08),
-                      blurRadius: 10,
-                      offset: const Offset(0, 6),
+                      blurRadius: s(10),
+                      offset: Offset(0, s(6)),
                     ),
                   ],
                 ),
                 child: Row(
+                  mainAxisSize: MainAxisSize.max,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     for (int i = 0; i < buttons.length; i++) ...[
                       SizedBox(
-                        width: perBtnW,
+                        width: buttonWidth,
                         child: _OverlayButton(
                           icon: buttons[i].icon,
                           label: buttons[i].label,
@@ -1151,15 +1217,17 @@ class _MapScreenState extends State<MapScreen>
   Widget _buildTigerMascot() {
     final isBottomActionRowVisible = _activeBuildingId != null && !_cardVisible;
     final isOverlayActionVisible = _activeBuildingId != null && _cardVisible;
+    final uiScale = _phoneUiScaleForContext(context);
+    double s(double value) => value * uiScale;
     final media = MediaQuery.of(context);
     final sw = media.size.width / 411.0;
-    final navHeight = (72 * sw).clamp(60.0, 84.0);
-    final navBottomPadding = 8.0 + media.padding.bottom;
-    final navTopPadding = 6.0;
+    final navHeight = (72 * sw * uiScale).clamp(s(60), s(84));
+    final navBottomPadding = s(8) + media.padding.bottom;
+    final navTopPadding = s(6);
     final navReserved = navHeight + navBottomPadding + navTopPadding;
     final tigerScale = isOverlayActionVisible ? _tigerOverlayScale : 1.0;
-    final tigerWidth = _tigerSize * tigerScale;
-    final tigerHeight = tigerWidth * _tigerHeightFactor;
+    final tigerLayoutWidth = s(_tigerSize);
+    final tigerLayoutHeight = tigerLayoutWidth * _tigerHeightFactor;
     final tigerViewportX = isOverlayActionVisible
         ? _tigerOverlayViewportX
         : _tigerMapViewportX;
@@ -1167,80 +1235,110 @@ class _MapScreenState extends State<MapScreen>
         ? _tigerOverlayViewportY
         : _tigerMapViewportY;
     final tigerViewportXOffset = isOverlayActionVisible
-        ? _tigerOverlayViewportXOffset
-        : _tigerMapViewportXOffset;
+        ? s(_tigerOverlayViewportXOffset)
+        : s(_tigerMapViewportXOffset);
     final tigerViewportYOffset = isOverlayActionVisible
-        ? _tigerOverlayViewportYOffset
-        : _tigerMapViewportYOffset;
+        ? s(_tigerOverlayViewportYOffset)
+        : s(_tigerMapViewportYOffset);
     final tigerLift = isBottomActionRowVisible
-        ? _tigerMapLiftWhenActionsVisible
+        ? s(_tigerMapLiftWhenActionsVisible)
         : 0.0;
     final bubbleCount = _visibleTigerBubbles.length;
     final bubbleWidthFactor = isOverlayActionVisible
         ? _tigerBubbleWidthFactorOverlay
         : _tigerBubbleWidthFactor;
     final bubbleMinWidth = isOverlayActionVisible
-        ? _tigerBubbleMinWidthOverlay
-        : _tigerBubbleMinWidth;
+        ? s(_tigerBubbleMinWidthOverlay)
+        : s(_tigerBubbleMinWidth);
     final bubbleMaxWidth = isOverlayActionVisible
-        ? _tigerBubbleMaxWidthOverlay
-        : _tigerBubbleMaxWidth;
+        ? s(_tigerBubbleMaxWidthOverlay)
+        : s(_tigerBubbleMaxWidth);
     final bubbleXOffset = isOverlayActionVisible
-        ? _tigerBubbleXOffsetOverlay
-        : _tigerBubbleXOffset;
+        ? s(_tigerBubbleXOffsetOverlay)
+        : s(_tigerBubbleXOffset);
     final bubbleYOffset = isOverlayActionVisible
-        ? _tigerBubbleYOffsetOverlay
-        : _tigerBubbleYOffset;
+        ? s(_tigerBubbleYOffsetOverlay)
+        : s(_tigerBubbleYOffset);
 
     return Positioned.fill(
       child: LayoutBuilder(
         builder: (context, constraints) {
           final availableWidth =
-              (constraints.maxWidth - tigerWidth).clamp(0.0, double.infinity)
+              (constraints.maxWidth - tigerLayoutWidth).clamp(
+                    0.0,
+                    double.infinity,
+                  )
                   as double;
           final availableHeight =
-              (constraints.maxHeight - navReserved - tigerHeight).clamp(
+              (constraints.maxHeight - navReserved - tigerLayoutHeight).clamp(
                     0.0,
                     double.infinity,
                   )
                   as double;
 
-          final left =
+          final mapLeft =
               (availableWidth * tigerViewportX.clamp(0.0, 1.0)) +
               tigerViewportXOffset;
-          final top =
+          final mapTop =
               (availableHeight * tigerViewportY.clamp(0.0, 1.0)) +
               tigerViewportYOffset;
-          final liftedTop =
-              (top - tigerLift).clamp(0.0, availableHeight) as double;
+
+          // Overlay mode: anchor tiger just above navbar and center horizontally.
+          final overlayNavTop =
+              constraints.maxHeight - navBottomPadding - navHeight;
+          final overlayTopBase = overlayNavTop - tigerLayoutHeight;
+          final overlayLeft =
+              ((constraints.maxWidth - tigerLayoutWidth) / 2.0) +
+              tigerViewportXOffset;
+          final overlayTop =
+              (overlayTopBase + tigerViewportYOffset).clamp(
+                    0.0,
+                    constraints.maxHeight - tigerLayoutHeight,
+                  )
+                  as double;
+
+          final left = isOverlayActionVisible ? overlayLeft : mapLeft;
+          final top = isOverlayActionVisible ? overlayTop : mapTop;
+          final liftedTop = isOverlayActionVisible
+              ? top
+              : (top - tigerLift).clamp(0.0, availableHeight) as double;
           final bubbleWidth =
               (constraints.maxWidth * bubbleWidthFactor).clamp(
                     bubbleMinWidth,
                     bubbleMaxWidth,
                   )
                   as double;
-          final newBubbleLeft =
+          final bubbleMinLeft = s(8);
+          final bubbleMaxLeft = constraints.maxWidth - bubbleWidth - s(8);
+          final mapBubbleLeft =
               (left + bubbleXOffset - bubbleWidth).clamp(
-                    8.0,
-                    constraints.maxWidth - bubbleWidth - 8.0,
+                    bubbleMinLeft,
+                    bubbleMaxLeft,
                   )
                   as double;
+          final overlayBubbleLeft =
+              (((constraints.maxWidth - bubbleWidth) / 2.0) + bubbleXOffset)
+                      .clamp(bubbleMinLeft, bubbleMaxLeft)
+                  as double;
+          final newBubbleLeft = isOverlayActionVisible
+              ? overlayBubbleLeft
+              : mapBubbleLeft;
+          final bubbleTopTarget = isOverlayActionVisible
+              ? (overlayNavTop - bubbleYOffset)
+              : (liftedTop + tigerLayoutHeight + bubbleYOffset);
           final newBubbleTop =
-              (liftedTop + tigerHeight + bubbleYOffset).clamp(
-                    8.0,
-                    constraints.maxHeight - 96.0,
-                  )
+              bubbleTopTarget.clamp(s(8), constraints.maxHeight - s(96))
                   as double;
           final oldBubbleLeft =
-              (newBubbleLeft + _tigerBubbleOldXShift).clamp(
-                    8.0,
-                    constraints.maxWidth - bubbleWidth - 8.0,
+              (newBubbleLeft + s(_tigerBubbleOldXShift)).clamp(
+                    s(8),
+                    constraints.maxWidth - bubbleWidth - s(8),
                   )
                   as double;
           final oldBubbleTop =
-              (newBubbleTop - _tigerBubbleStackGap).clamp(
-                    8.0,
-                    constraints.maxHeight - 88.0,
+              (newBubbleTop - s(_tigerBubbleStackGap)).clamp(
+                    s(8),
+                    constraints.maxHeight - s(88),
                   )
                   as double;
 
@@ -1263,7 +1361,7 @@ class _MapScreenState extends State<MapScreen>
                 top: isOldBubble ? oldBubbleTop : newBubbleTop,
                 child: _TigerAnimatedBubble(
                   key: ValueKey<int>(entry.id),
-                  text: isOldBubble ? '' : entry.text,
+                  text: entry.text,
                   width: bubbleWidth,
                   isBackground: isOldBubble,
                   delayFraction: delayFraction,
@@ -1274,7 +1372,6 @@ class _MapScreenState extends State<MapScreen>
 
           return Stack(
             children: [
-              ...bubbleWidgets,
               AnimatedPositioned(
                 duration: _actionBarTransitionDuration,
                 curve: _actionBarInCurve,
@@ -1287,11 +1384,12 @@ class _MapScreenState extends State<MapScreen>
                   alignment: Alignment.bottomCenter,
                   child: _TigerHitTestImage(
                     asset: _activeTigerAsset,
-                    width: _tigerSize,
+                    width: tigerLayoutWidth,
                     onTap: _onTigerTap,
                   ),
                 ),
               ),
+              ...bubbleWidgets,
             ],
           );
         },
@@ -1456,6 +1554,8 @@ class _TigerSpeechBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final uiScale = _phoneUiScaleForContext(context);
+    double s(double value) => value * uiScale;
     final bubbleColor = isBackground
         ? const Color(0xFFD0D5DD)
         : const Color(0xFF1E88E5);
@@ -1467,36 +1567,37 @@ class _TigerSpeechBubble extends StatelessWidget {
         : Colors.white;
 
     return IgnorePointer(
-      child: Opacity(
+      child: AnimatedOpacity(
         opacity: isBackground ? 0.92 : 1.0,
+        duration: const Duration(milliseconds: 200),
         child: SizedBox(
           width: width,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: EdgeInsets.symmetric(horizontal: s(12), vertical: s(9)),
             decoration: BoxDecoration(
               color: bubbleColor,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(s(14)),
               border: Border.all(color: borderColor),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(
                     alpha: isBackground ? 0.05 : 0.10,
                   ),
-                  blurRadius: isBackground ? 6 : 10,
-                  offset: const Offset(0, 4),
+                  blurRadius: isBackground ? s(6) : s(10),
+                  offset: Offset(0, s(4)),
                 ),
               ],
             ),
-            child: Text(
-              text,
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
+            child: AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 200),
               style: TextStyle(
                 color: textColor,
-                fontSize: 12.5,
+                fontSize: s(12.5),
                 fontWeight: FontWeight.w600,
                 height: 1.25,
               ),
+              child: Text(text, maxLines: 3, overflow: TextOverflow.ellipsis),
             ),
           ),
         ),
@@ -1572,33 +1673,35 @@ class _OverlayButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final uiScale = _phoneUiScaleForContext(context);
+    double s(double value) => value * uiScale;
     return InkWell(
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(s(10)),
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        padding: EdgeInsets.symmetric(horizontal: s(10), vertical: s(10)),
         decoration: BoxDecoration(
           color: ThemeProvider.navyBlue,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(s(10)),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.08),
-              blurRadius: 6,
-              offset: const Offset(0, 3),
+              blurRadius: s(6),
+              offset: Offset(0, s(3)),
             ),
           ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 18, color: ThemeProvider.gold),
-            const SizedBox(width: 6),
+            Icon(icon, size: s(18), color: ThemeProvider.gold),
+            SizedBox(width: s(6)),
             Flexible(
               child: Text(
                 label,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 12,
+                style: TextStyle(
+                  fontSize: s(12),
                   fontWeight: FontWeight.w600,
                   color: ThemeProvider.gold,
                 ),
@@ -1633,10 +1736,27 @@ class _BuildingNavImagesState extends State<_BuildingNavImages> {
   static const double _overlayMinZoom = 1.0;
   static const double _overlayMaxZoom = 4.5;
 
+  // Manual fine-tuning per building (shared by all floors in that building).
+  // Values: scale, x, y.
+  // x/y are normalized translation factors (1.0 = half container width/height).
+  static const Map<String, _BuildingNavTransform> _transformByBuilding = {
+    'airport': _BuildingNavTransform(scale: 0.95, x: -0.5, y: -0.8),
+    'gym_top_right': _BuildingNavTransform(scale: 0.95, x: -1.2, y: -0.8),
+    'building_b': _BuildingNavTransform(scale: 1.0, x: -0.1, y: -0.8),
+    'building_c': _BuildingNavTransform(scale: 1.02, x: -5.0, y: -0.8),
+  };
+
+  static const _BuildingNavTransform _defaultTransform = _BuildingNavTransform(
+    scale: 1.0,
+    x: 0.0,
+    y: 0.0,
+  );
+
   late final TransformationController _controller;
   Uint8List? _overlayRgba;
   int _overlayImgWidth = 0;
   int _overlayImgHeight = 0;
+  int _activeFloorIndex = 0;
 
   @override
   void initState() {
@@ -1657,6 +1777,12 @@ class _BuildingNavImagesState extends State<_BuildingNavImages> {
         ..scale(widget.overlayMode ? _overlayMinZoom : _cardMinZoom);
     }
     if (oldWidget.buildingId != widget.buildingId) {
+      _activeFloorIndex = 0;
+      _loadOverlayAlphaData();
+      return;
+    }
+
+    if (oldWidget.overlayMode != widget.overlayMode) {
       _loadOverlayAlphaData();
     }
   }
@@ -1667,24 +1793,162 @@ class _BuildingNavImagesState extends State<_BuildingNavImages> {
     super.dispose();
   }
 
-  String? _fileFor(String id) {
+  List<_FloorMapOption> _floorOptionsFor(String id) {
     switch (id) {
       case 'gym_top_right':
-        return 'assets/images/map/navigation/gym_navigation.png';
+        return const [
+          _FloorMapOption(
+            label: 'Route',
+            assetPath: 'assets/images/map/navigation/gym_navigation.png',
+          ),
+        ];
       case 'building_b':
-        return 'assets/images/map/navigation/buildingb_navigation.png';
+        return const [
+          _FloorMapOption(
+            label: 'Floor 1',
+            assetPath: 'assets/images/map/navigation/buildingb_1.png',
+          ),
+          _FloorMapOption(
+            label: 'Floor 2',
+            assetPath: 'assets/images/map/navigation/buildingb_2.png',
+          ),
+          _FloorMapOption(
+            label: 'Floor 3',
+            assetPath: 'assets/images/map/navigation/buildingb_3.png',
+          ),
+          _FloorMapOption(
+            label: 'Floor 4',
+            assetPath: 'assets/images/map/navigation/buildingb_4.png',
+          ),
+          _FloorMapOption(
+            label: 'Floor 5',
+            assetPath: 'assets/images/map/navigation/buildingb_5.png',
+          ),
+          _FloorMapOption(
+            label: 'Floor 6',
+            assetPath: 'assets/images/map/navigation/buildingb_6.png',
+          ),
+          _FloorMapOption(
+            label: 'Floor 7',
+            assetPath: 'assets/images/map/navigation/buildingb_7.png',
+          ),
+        ];
       case 'building_c':
-        return 'assets/images/map/navigation/buildingc_navigation.png';
+        return const [
+          _FloorMapOption(
+            label: 'Floor 1',
+            assetPath: 'assets/images/map/navigation/buildingc_1.png',
+          ),
+          _FloorMapOption(
+            label: 'Floor 2-7',
+            assetPath: 'assets/images/map/navigation/buildingc_2.png',
+          ),
+        ];
       case 'airport':
         // "Building A" navigation asset is used for Airport.
-        return 'assets/images/map/navigation/buildinga_navigation.png';
+        return const [
+          _FloorMapOption(
+            label: 'Route',
+            assetPath: 'assets/images/map/navigation/buildinga_navigation.png',
+          ),
+        ];
       default:
-        return null;
+        return const [];
     }
   }
 
+  String? _pathForCurrentFloor() {
+    final options = _floorOptionsFor(widget.buildingId);
+    if (options.isEmpty) return null;
+    final safeIndex = _activeFloorIndex.clamp(0, options.length - 1) as int;
+    return options[safeIndex].assetPath;
+  }
+
+  void _selectFloor(int index) {
+    final options = _floorOptionsFor(widget.buildingId);
+    if (options.isEmpty) return;
+    final safeIndex = index.clamp(0, options.length - 1) as int;
+    if (safeIndex == _activeFloorIndex) return;
+    setState(() {
+      _activeFloorIndex = safeIndex;
+    });
+    _loadOverlayAlphaData();
+  }
+
+  Future<void> _openFloorSelectionPrompt() async {
+    final options = _floorOptionsFor(widget.buildingId);
+    if (options.length <= 1) return;
+
+    final selectedIndex = await showModalBottomSheet<int>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                child: Text(
+                  'Choose a floor',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              for (int i = 0; i < options.length; i++)
+                ListTile(
+                  title: Text(options[i].label),
+                  trailing: i == _activeFloorIndex
+                      ? const Icon(Icons.check)
+                      : null,
+                  onTap: () => Navigator.of(context).pop(i),
+                ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (!mounted || selectedIndex == null) return;
+    _selectFloor(selectedIndex);
+  }
+
+  _BuildingNavTransform _transformForBuilding(String buildingId) {
+    return _transformByBuilding[buildingId] ?? _defaultTransform;
+  }
+
+  double _visualScaleFor(String buildingId) {
+    return _transformForBuilding(buildingId).scale;
+  }
+
+  Offset _visualOffsetFor({
+    required String buildingId,
+    required Size containerSize,
+    required Size imageSize,
+  }) {
+    final transform = _transformForBuilding(buildingId);
+    final freeSpaceX = containerSize.width - imageSize.width;
+    final freeSpaceY = containerSize.height - imageSize.height;
+
+    // Preserve alignment-like behavior when free space exists,
+    // but keep a small fallback span so x/y still work at scale 1.0.
+    final effectiveSpanX = freeSpaceX.abs() > 1.0
+        ? freeSpaceX
+        : containerSize.width * 0.12;
+    final effectiveSpanY = freeSpaceY.abs() > 1.0
+        ? freeSpaceY
+        : containerSize.height * 0.12;
+    return Offset(
+      transform.x * effectiveSpanX * 0.5,
+      transform.y * effectiveSpanY * 0.5,
+    );
+  }
+
   Future<void> _loadOverlayAlphaData() async {
-    final path = _fileFor(widget.buildingId);
+    final path = _pathForCurrentFloor();
     if (path == null) {
       if (!mounted) return;
       setState(() {
@@ -1725,8 +1989,13 @@ class _BuildingNavImagesState extends State<_BuildingNavImages> {
   }
 
   Rect _overlayImageRect(Size viewportSize, double imageW, double imageH) {
-    final left = (viewportSize.width - imageW) / 2.0;
-    final top = (viewportSize.height - imageH) * 0.1;
+    final offset = _visualOffsetFor(
+      buildingId: widget.buildingId,
+      containerSize: viewportSize,
+      imageSize: Size(imageW, imageH),
+    );
+    final left = ((viewportSize.width - imageW) / 2.0) + offset.dx;
+    final top = ((viewportSize.height - imageH) / 2.0) + offset.dy;
     return Rect.fromLTWH(left, top, imageW, imageH);
   }
 
@@ -1782,6 +2051,11 @@ class _BuildingNavImagesState extends State<_BuildingNavImages> {
       imageW: imageW,
       imageH: imageH,
     );
+    if (hitOpaque) {
+      _openFloorSelectionPrompt();
+      return;
+    }
+
     if (!hitOpaque) {
       onTapOutsideVisible();
     }
@@ -1789,21 +2063,27 @@ class _BuildingNavImagesState extends State<_BuildingNavImages> {
 
   @override
   Widget build(BuildContext context) {
-    final path = _fileFor(widget.buildingId);
+    final path = _pathForCurrentFloor();
     if (path == null) return const SizedBox.shrink();
 
     if (widget.overlayMode) {
       return LayoutBuilder(
         builder: (context, constraints) {
           // All navigation PNGs are currently 2048x1536 (4:3).
-          final imageW =
+          final baseImageW =
               (constraints.maxHeight * (4 / 3) <= constraints.maxWidth)
               ? constraints.maxHeight * (4 / 3)
               : constraints.maxWidth;
+          final imageW = baseImageW * _visualScaleFor(widget.buildingId);
           final imageH = imageW * (3 / 4);
           final viewportW = constraints.maxWidth;
           final viewportH = constraints.maxHeight;
           final viewportSize = Size(viewportW, viewportH);
+          final imageOffset = _visualOffsetFor(
+            buildingId: widget.buildingId,
+            containerSize: viewportSize,
+            imageSize: Size(imageW, imageH),
+          );
 
           return Stack(
             children: [
@@ -1818,21 +2098,29 @@ class _BuildingNavImagesState extends State<_BuildingNavImages> {
                 child: SizedBox(
                   width: viewportW,
                   height: viewportH,
-                  child: Align(
-                    alignment: const Alignment(0, -0.8),
-                    child: SizedBox(
-                      width: imageW,
-                      height: imageH,
-                      child: Image.asset(
-                        path,
-                        fit: BoxFit.contain,
-                        filterQuality: FilterQuality.medium,
-                        errorBuilder: (context, error, stack) =>
-                            _ImageNameFallback(
-                              path: path,
-                              width: imageW,
-                              height: imageH,
-                            ),
+                  child: Center(
+                    child: Transform.translate(
+                      offset: imageOffset,
+                      child: OverflowBox(
+                        minWidth: 0,
+                        minHeight: 0,
+                        maxWidth: double.infinity,
+                        maxHeight: double.infinity,
+                        child: SizedBox(
+                          width: imageW,
+                          height: imageH,
+                          child: Image.asset(
+                            path,
+                            fit: BoxFit.contain,
+                            filterQuality: FilterQuality.medium,
+                            errorBuilder: (context, error, stack) =>
+                                _ImageNameFallback(
+                                  path: path,
+                                  width: imageW,
+                                  height: imageH,
+                                ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -1856,37 +2144,100 @@ class _BuildingNavImagesState extends State<_BuildingNavImages> {
         final w = constraints.maxWidth;
         // Slightly larger max height for navigation images, since users will zoom/pan.
         final h = (w * 9 / 16).clamp(160.0, 320.0);
+        final visualScale = _visualScaleFor(widget.buildingId);
+        final baseImageW = min(w, h * (4 / 3));
+        final scaledW = baseImageW * visualScale;
+        final scaledH = scaledW * (3 / 4);
+        final imageOffset = _visualOffsetFor(
+          buildingId: widget.buildingId,
+          containerSize: Size(w, h),
+          imageSize: Size(scaledW, scaledH),
+        );
         return SizedBox(
           width: w,
           height: h,
           child: ClipRRect(
             borderRadius: BorderRadius.circular(18),
-            child: InteractiveViewer(
-              transformationController: _controller,
-              minScale: _cardMinZoom,
-              maxScale: _cardMaxZoom,
-              panEnabled: true,
-              scaleEnabled: true,
-              boundaryMargin: const EdgeInsets.all(24),
-              child: Material(
-                color: Colors.white,
-                elevation: 3,
-                borderRadius: BorderRadius.circular(18),
-                clipBehavior: Clip.antiAlias,
-                child: Image.asset(
-                  path,
-                  fit: BoxFit.contain,
-                  filterQuality: FilterQuality.medium,
-                  errorBuilder: (context, error, stack) =>
-                      _ImageNameFallback(path: path, width: w, height: h),
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: InteractiveViewer(
+                    transformationController: _controller,
+                    minScale: _cardMinZoom,
+                    maxScale: _cardMaxZoom,
+                    panEnabled: true,
+                    scaleEnabled: true,
+                    boundaryMargin: const EdgeInsets.all(24),
+                    child: Material(
+                      color: Colors.white,
+                      elevation: 3,
+                      borderRadius: BorderRadius.circular(18),
+                      clipBehavior: Clip.antiAlias,
+                      child: SizedBox(
+                        width: w,
+                        height: h,
+                        child: Center(
+                          child: Transform.translate(
+                            offset: imageOffset,
+                            child: OverflowBox(
+                              minWidth: 0,
+                              minHeight: 0,
+                              maxWidth: double.infinity,
+                              maxHeight: double.infinity,
+                              child: SizedBox(
+                                width: scaledW,
+                                height: scaledH,
+                                child: Image.asset(
+                                  path,
+                                  fit: BoxFit.contain,
+                                  filterQuality: FilterQuality.medium,
+                                  errorBuilder: (context, error, stack) =>
+                                      _ImageNameFallback(
+                                        path: path,
+                                        width: scaledW,
+                                        height: scaledH,
+                                      ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-              ),
+                Positioned.fill(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTap: _openFloorSelectionPrompt,
+                  ),
+                ),
+              ],
             ),
           ),
         );
       },
     );
   }
+}
+
+class _BuildingNavTransform {
+  final double scale;
+  final double x;
+  final double y;
+
+  const _BuildingNavTransform({
+    required this.scale,
+    required this.x,
+    required this.y,
+  });
+}
+
+class _FloorMapOption {
+  final String label;
+  final String assetPath;
+
+  const _FloorMapOption({required this.label, required this.assetPath});
 }
 
 List<String> _infoImagePathsForBuilding(String id) {

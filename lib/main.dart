@@ -14,17 +14,15 @@ import 'package:sticampuscentralguide/utils/background_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-  
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
   // Initialize notification service
   await NotificationService().initialize();
-  
+
   // Initialize background service for persistent notifications
   await BackgroundService().initialize();
   await BackgroundService().registerDailyTask();
-  
+
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
@@ -50,8 +48,9 @@ class MyApp extends StatelessWidget {
             title: 'STI Campus Central Guide',
             theme: themeProvider.lightTheme,
             darkTheme: themeProvider.darkTheme,
-            themeMode:
-                themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+            themeMode: themeProvider.isDarkMode
+                ? ThemeMode.dark
+                : ThemeMode.light,
             debugShowCheckedModeBanner: false,
             home: const SplashWrapper(),
           );
@@ -72,30 +71,20 @@ class SplashWrapper extends StatefulWidget {
 class _SplashWrapperState extends State<SplashWrapper> {
   bool _showSplash = true;
 
-  @override
-  void initState() {
-    super.initState();
-    _startSplashTimer();
-  }
-
-  void _startSplashTimer() {
-    // Show splash for at least 2.5 seconds
-    Future.delayed(const Duration(milliseconds: 2500), () {
-      if (mounted) {
-        setState(() => _showSplash = false);
-      }
-    });
+  void _onSplashFinished() {
+    if (!mounted || !_showSplash) return;
+    setState(() => _showSplash = false);
   }
 
   @override
   Widget build(BuildContext context) {
     if (_showSplash) {
-      return const LoadingScreen();
+      return LoadingScreen(onFinished: _onSplashFinished);
     }
 
     final visitorMode = context.watch<VisitorModeProvider>();
     if (!visitorMode.loaded) {
-      return const LoadingScreen();
+      return const _BootstrapLoadingScreen();
     }
     if (visitorMode.isVisitor) {
       return const HomeScreen();
@@ -103,15 +92,36 @@ class _SplashWrapperState extends State<SplashWrapper> {
 
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
+      initialData: FirebaseAuth.instance.currentUser,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const LoadingScreen();
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            snapshot.data == null) {
+          return const _BootstrapLoadingScreen();
         }
         if (snapshot.hasData) {
           return const HomeScreen();
         }
         return const LoginScreen();
       },
+    );
+  }
+}
+
+class _BootstrapLoadingScreen extends StatelessWidget {
+  const _BootstrapLoadingScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return ColoredBox(
+      color: cs.surface,
+      child: const Center(
+        child: SizedBox(
+          width: 28,
+          height: 28,
+          child: CircularProgressIndicator(strokeWidth: 2.6),
+        ),
+      ),
     );
   }
 }

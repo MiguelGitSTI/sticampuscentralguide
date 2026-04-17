@@ -146,8 +146,8 @@ class _CustomCarouselFB2State extends State<CustomCarouselFB2> {
           height: 8,
           decoration: BoxDecoration(
             color: isActive
-                ? const Color(0xFF123CBE)
-                : const Color(0xFF123CBE).withOpacity(0.3),
+                ? const Color(0xFFFFB206)
+                : const Color(0xFFFFB206).withOpacity(0.35),
             borderRadius: BorderRadius.circular(4),
           ),
         );

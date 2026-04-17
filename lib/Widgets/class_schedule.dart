@@ -33,10 +33,13 @@ class _ClassScheduleState extends State<ClassSchedule> {
         jsonStr = await rootBundle.loadString(path);
       } catch (_) {
         // Fallback to legacy single-schedule file
-        jsonStr = await rootBundle.loadString('assets/data/class_schedule.json');
+        jsonStr = await rootBundle.loadString(
+          'assets/data/class_schedule.json',
+        );
       }
 
-      final Map<String, dynamic> decoded = json.decode(jsonStr) as Map<String, dynamic>;
+      final Map<String, dynamic> decoded =
+          json.decode(jsonStr) as Map<String, dynamic>;
 
       final now = DateTime.now();
       final String dayKey = _dayKeyFor(now.weekday);
@@ -80,6 +83,9 @@ class _ClassScheduleState extends State<ClassSchedule> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final ongoingAccent = isDark
+        ? const Color(0xFFFFB206)
+        : const Color(0xFF123CBE);
     final now = TimeOfDay.now();
 
     return FutureBuilder<List<ClassItem>>(
@@ -151,7 +157,9 @@ class _ClassScheduleState extends State<ClassSchedule> {
 
                   return Padding(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 16.0, vertical: 4.0),
+                      horizontal: 16.0,
+                      vertical: 4.0,
+                    ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
@@ -160,7 +168,7 @@ class _ClassScheduleState extends State<ClassSchedule> {
                           height: 12,
                           decoration: BoxDecoration(
                             color: isOngoing
-                                ? const Color(0xFF123CBE)
+                                ? ongoingAccent
                                 : cs.outlineVariant,
                             shape: BoxShape.circle,
                           ),
@@ -172,14 +180,13 @@ class _ClassScheduleState extends State<ClassSchedule> {
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
                               color: isOngoing
-                                  ? const Color(0xFF123CBE).withOpacity(0.1)
+                                  ? ongoingAccent.withOpacity(
+                                      isDark ? 0.18 : 0.1,
+                                    )
                                   : cs.surfaceVariant,
                               borderRadius: BorderRadius.circular(12),
                               border: isOngoing
-                                  ? Border.all(
-                                      color: const Color(0xFF123CBE),
-                                      width: 1.5,
-                                    )
+                                  ? Border.all(color: ongoingAccent, width: 1.5)
                                   : null,
                             ),
                             child: Column(
@@ -191,7 +198,7 @@ class _ClassScheduleState extends State<ClassSchedule> {
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
                                     color: isOngoing
-                                        ? const Color(0xFF123CBE)
+                                        ? ongoingAccent
                                         : cs.onSurface,
                                   ),
                                   softWrap: true,
@@ -234,7 +241,7 @@ class _ClassScheduleState extends State<ClassSchedule> {
     final nowMinutes = now.hour * 60 + now.minute;
     final startMinutes = classItem.startHour * 60 + classItem.startMinute;
     final endMinutes = classItem.endHour * 60 + classItem.endMinute;
-    
+
     // Only highlight if class is currently in progress (started but not ended)
     // Do NOT highlight if class has ended (nowMinutes >= endMinutes)
     return nowMinutes >= startMinutes && nowMinutes < endMinutes;
